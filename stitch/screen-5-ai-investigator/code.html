@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI Investigator - Thermal Intelligence</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "background": "#131315",
+                        "surface": "#131315",
+                        "on-error": "#690005",
+                        "tertiary": "#dec29a",
+                        "on-surface": "#e4e2e4",
+                        "error": "#ffb4ab",
+                        "on-background": "#e4e2e4",
+                        "primary-container": "#0f172a",
+                        "on-tertiary-container": "#957d5a",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-high": "#2a2a2b",
+                        "error-container": "#93000a",
+                        "tertiary-fixed": "#fcdeb5",
+                        "on-tertiary-fixed-variant": "#574425",
+                        "inverse-on-surface": "#303032",
+                        "outline-variant": "#45464d",
+                        "surface-container-highest": "#353436",
+                        "secondary-fixed-dim": "#b9c7e0",
+                        "on-secondary-container": "#abb9d2",
+                        "surface-tint": "#bec6e0",
+                        "surface-variant": "#353436",
+                        "inverse-primary": "#565e74",
+                        "inverse-surface": "#e4e2e4",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "tertiary-container": "#231500",
+                        "on-secondary-fixed": "#0d1c2f",
+                        "outline": "#909097",
+                        "on-tertiary-fixed": "#271901",
+                        "on-surface-variant": "#c6c6cd",
+                        "on-secondary-fixed-variant": "#3a485c",
+                        "on-primary-fixed": "#131b2e",
+                        "primary-fixed": "#dae2fd",
+                        "surface-container-lowest": "#0e0e10",
+                        "on-secondary": "#233144",
+                        "surface-bright": "#39393b",
+                        "secondary-fixed": "#d5e3fd",
+                        "surface-container-low": "#1b1b1d",
+                        "surface-container": "#1f1f21",
+                        "tertiary-fixed-dim": "#dec29a",
+                        "surface-dim": "#131315",
+                        "on-primary-container": "#798098",
+                        "secondary-container": "#3c4a5e",
+                        "on-primary": "#283044",
+                        "primary-fixed-dim": "#bec6e0",
+                        "secondary": "#b9c7e0",
+                        "primary": "#bec6e0",
+                        "on-tertiary": "#3e2d11"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "12px",
+                        "sidebar-width": "320px",
+                        "margin-compact": "8px",
+                        "toolbar-width": "48px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "body-md": ["Inter"],
+                        "data-md": ["JetBrains Mono"],
+                        "data-lg": ["JetBrains Mono"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-caps": ["11px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "data-md": ["13px", { "lineHeight": "18px", "fontWeight": "500" }],
+                        "data-lg": ["16px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Hide scrollbars but keep functionality */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background h-screen w-screen overflow-hidden flex flex-col font-body-md">
+<!-- TopNavBar -->
+<header class="bg-background dark:bg-background border-b border-outline-variant flex justify-between items-center h-toolbar-width px-gutter w-full z-50">
+<div class="flex items-center gap-4">
+<div class="font-headline-sm text-headline-sm font-bold text-on-background tracking-tighter uppercase">THERMAL INTELLIGENCE</div>
+</div>
+<!-- Search bar on left logic represented here if we had one, but keeping layout tight -->
+<div class="flex items-center gap-6">
+<nav class="hidden md:flex gap-6 h-full items-center">
+<a class="text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors px-2 py-1 flex items-center h-full" href="#">Dashboard</a>
+<a class="text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors px-2 py-1 flex items-center h-full" href="#">Analytics</a>
+<a class="text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors px-2 py-1 flex items-center h-full" href="#">Alerts</a>
+<a class="text-primary border-b-2 border-primary hover:bg-surface-container-high transition-colors px-2 py-1 flex items-center h-full font-bold" href="#">AI Investigator</a>
+<a class="text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors px-2 py-1 flex items-center h-full" href="#">System Status</a>
+</nav>
+<div class="flex gap-2 text-on-surface-variant">
+<button class="p-1 hover:bg-surface-container-high rounded transition-colors cursor-pointer active:opacity-80"><span class="material-symbols-outlined">notifications</span></button>
+<button class="p-1 hover:bg-surface-container-high rounded transition-colors cursor-pointer active:opacity-80"><span class="material-symbols-outlined">settings</span></button>
+<button class="p-1 hover:bg-surface-container-high rounded transition-colors cursor-pointer active:opacity-80"><span class="material-symbols-outlined">help</span></button>
+<div class="w-6 h-6 rounded-full bg-surface-container-highest border border-outline-variant ml-2 overflow-hidden flex items-center justify-center">
+<img alt="Investigator Profile" class="object-cover w-full h-full" data-alt="A clinical, high-contrast, minimalist portrait of an analyst in a dimly lit command center setting, illuminated by cool blue screen glow. Corporate professional attire. Shot with shallow depth of field, focused on the subject's stoic expression. High resolution." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSD8hnsgKu9q4bk38Yi84-xgXDXzXDHwni_YahFlwEzM4ZDEnrzVUj7DAt-cFb4W4wipTIgIQ_pvNGEI7Mi6tMjmhEjWgb8ZuuVaKvqO2cXiiDFU5UBAcmP1TTv0bhpVQtu1c-qtDJMDD5yBPnCCgzB6zakidtI3-XWJYe4PG7T2LGMQifYTuV-zK72y6dYJF5zp6nX4uSDKWAT1fFdJxY5cyS9SkqC8EkewZyjSZlF_H7DHpwfZEpmg"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Workspace -->
+<main class="flex-1 flex overflow-hidden">
+<!-- Left: Conversation Panel -->
+<aside class="w-sidebar-width min-w-[320px] bg-surface-container flex flex-col border-r border-outline-variant z-40">
+<div class="p-3 border-b border-outline-variant bg-surface-container-high">
+<h1 class="font-headline-sm text-headline-sm text-on-surface tracking-tight">AI INVESTIGATOR</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant mt-1">GROUNDED IN PLATFORM DATA</p>
+</div>
+<div class="flex-1 overflow-y-auto no-scrollbar p-gutter space-y-6 flex flex-col">
+<!-- Analyst Msg -->
+<div class="flex flex-col gap-1 items-end">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Analyst</span>
+<div class="bg-surface-container-highest border border-outline-variant p-3 max-w-[90%] font-body-sm text-on-surface">
+                        Show me the highest-risk persistent hotspots near oil and gas facilities.
+                    </div>
+</div>
+<!-- AI Response Summary -->
+<div class="flex flex-col gap-1 items-start">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[16px]">psychology</span>
+<span class="font-label-caps text-label-caps text-primary uppercase">System Alpha</span>
+</div>
+<div class="bg-[#1e293b] border border-[#334155] p-3 max-w-[95%] font-body-sm text-on-surface">
+                        Three persistent high-risk hotspots are currently associated with nearby industrial infrastructure.
+                    </div>
+</div>
+<div class="mt-auto space-y-2 pt-4">
+<p class="font-label-caps text-label-caps text-on-surface-variant">SUGGESTED QUERIES</p>
+<button class="w-full text-left p-2 border border-outline-variant bg-surface hover:bg-surface-container-highest transition-colors font-body-sm text-on-surface-variant hover:text-on-surface flex items-center justify-between group">
+<span class="truncate">Show me the highest-risk persistent hotspots</span>
+<span class="material-symbols-outlined text-[14px] opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</button>
+<button class="w-full text-left p-2 border border-outline-variant bg-surface hover:bg-surface-container-highest transition-colors font-body-sm text-on-surface-variant hover:text-on-surface flex items-center justify-between group">
+<span class="truncate">Why is H-8921 classified as a gas flare?</span>
+<span class="material-symbols-outlined text-[14px] opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</button>
+<button class="w-full text-left p-2 border border-outline-variant bg-surface hover:bg-surface-container-highest transition-colors font-body-sm text-on-surface-variant hover:text-on-surface flex items-center justify-between group">
+<span class="truncate">Summarize today's major thermal anomalies</span>
+<span class="material-symbols-outlined text-[14px] opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Input area -->
+<div class="p-3 border-t border-outline-variant bg-surface-container-high">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-2 text-on-surface-variant text-[18px]">search</span>
+<input class="w-full bg-[#020617] border border-outline-variant text-on-surface font-body-sm px-8 py-2 focus:outline-none focus:border-on-surface transition-colors placeholder:text-on-surface-variant/50 uppercase" placeholder="ASK ABOUT DETECTED HOTSPOTS..." type="text"/>
+<button class="absolute right-2 text-primary hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[18px] icon-fill">send</span>
+</button>
+</div>
+</div>
+</aside>
+<!-- Center: AI Response & Synthesis -->
+<section class="flex-1 bg-surface flex flex-col min-w-0">
+<div class="p-gutter border-b border-outline-variant flex justify-between items-center bg-surface-container-lowest">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant">hub</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">SYNTHESIS RESULTS</h2>
+</div>
+<div class="flex items-center gap-2 px-3 py-1 bg-surface-container border border-outline-variant font-label-caps text-label-caps text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px] text-tertiary">check_circle</span>
+                    BASED ON 3 HOTSPOTS AND 4 EVIDENCE SOURCES
+                </div>
+</div>
+<div class="flex-1 overflow-y-auto no-scrollbar p-6 space-y-4">
+<!-- Result 1 -->
+<div class="bg-[#1e293b] border border-[#334155] relative flex flex-col p-4 gap-4">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 bg-error"></div>
+<span class="font-data-lg text-data-lg text-on-surface">H-8921</span>
+</div>
+<button class="font-label-caps text-label-caps text-primary hover:text-secondary transition-colors flex items-center gap-1 group">
+                            VIEW INVESTIGATION <span class="material-symbols-outlined text-[14px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+</div>
+<div class="grid grid-cols-2 gap-4 border-t border-outline-variant pt-4">
+<div class="space-y-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant block">PLATFORM CLASSIFICATION</span>
+<div class="inline-flex items-center gap-1 bg-error/10 border border-error/20 px-2 py-1">
+<span class="material-symbols-outlined text-[14px] text-error">local_fire_department</span>
+<span class="font-body-sm text-body-sm text-error uppercase">Gas Flare</span>
+</div>
+</div>
+<div class="space-y-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant block">AI INTERPRETATION</span>
+<p class="font-body-sm text-body-sm text-on-surface">High-risk persistent industrial flare adjacent to critical infrastructure.</p>
+</div>
+</div>
+<div class="flex gap-6 mt-2">
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">RISK SCORE</span>
+<span class="font-data-lg text-data-lg text-error">87</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">CONFIDENCE</span>
+<span class="font-data-lg text-data-lg text-secondary">91%</span>
+</div>
+</div>
+</div>
+<!-- Result 2 -->
+<div class="bg-surface-container border border-outline-variant relative flex flex-col p-4 gap-4 opacity-80 hover:opacity-100 transition-opacity">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 bg-error"></div>
+<span class="font-data-lg text-data-lg text-on-surface">H-9012</span>
+</div>
+<button class="font-label-caps text-label-caps text-primary hover:text-secondary transition-colors flex items-center gap-1 group">
+                            VIEW INVESTIGATION <span class="material-symbols-outlined text-[14px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+</div>
+<div class="grid grid-cols-2 gap-4 border-t border-outline-variant pt-4">
+<div class="space-y-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant block">PLATFORM CLASSIFICATION</span>
+<div class="inline-flex items-center gap-1 bg-error/10 border border-error/20 px-2 py-1">
+<span class="material-symbols-outlined text-[14px] text-error">local_fire_department</span>
+<span class="font-body-sm text-body-sm text-error uppercase">Gas Flare</span>
+</div>
+</div>
+<div class="space-y-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant block">AI INTERPRETATION</span>
+<p class="font-body-sm text-body-sm text-on-surface">Secondary flare activity likely correlated with H-8921 operations.</p>
+</div>
+</div>
+<div class="flex gap-6 mt-2">
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">RISK SCORE</span>
+<span class="font-data-lg text-data-lg text-error">91</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">CONFIDENCE</span>
+<span class="font-data-lg text-data-lg text-secondary">89%</span>
+</div>
+</div>
+</div>
+<!-- Result 3 -->
+<div class="bg-surface-container border border-outline-variant relative flex flex-col p-4 gap-4 opacity-80 hover:opacity-100 transition-opacity">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 bg-error"></div>
+<span class="font-data-lg text-data-lg text-on-surface">H-8847</span>
+</div>
+<button class="font-label-caps text-label-caps text-primary hover:text-secondary transition-colors flex items-center gap-1 group">
+                            VIEW INVESTIGATION <span class="material-symbols-outlined text-[14px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+</div>
+<div class="grid grid-cols-2 gap-4 border-t border-outline-variant pt-4">
+<div class="space-y-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant block">PLATFORM CLASSIFICATION</span>
+<div class="inline-flex items-center gap-1 bg-tertiary/10 border border-tertiary/20 px-2 py-1">
+<span class="material-symbols-outlined text-[14px] text-tertiary">factory</span>
+<span class="font-body-sm text-body-sm text-tertiary uppercase">Industrial Fire</span>
+</div>
+</div>
+<div class="space-y-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant block">AI INTERPRETATION</span>
+<p class="font-body-sm text-body-sm text-on-surface">Anomalous thermal signature inconsistent with standard flaring.</p>
+</div>
+</div>
+<div class="flex gap-6 mt-2">
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">RISK SCORE</span>
+<span class="font-data-lg text-data-lg text-error">94</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">CONFIDENCE</span>
+<span class="font-data-lg text-data-lg text-secondary">93%</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Right: Evidence Used Panel -->
+<aside class="w-sidebar-width min-w-[320px] bg-surface-container flex flex-col border-l border-outline-variant z-40 hidden lg:flex">
+<div class="p-3 border-b border-outline-variant bg-surface-container-high flex justify-between items-center">
+<h3 class="font-headline-sm text-headline-sm text-on-surface tracking-tight">EVIDENCE USED</h3>
+<span class="font-data-md text-data-md text-primary">H-8921</span>
+</div>
+<div class="flex-1 overflow-y-auto no-scrollbar p-gutter space-y-4">
+<!-- Structured Data Panels -->
+<div class="border border-outline-variant">
+<div class="bg-surface-container-highest px-3 py-1 border-b border-outline-variant">
+<span class="font-label-caps text-label-caps text-on-surface-variant">THERMAL DATA</span>
+</div>
+<div class="p-3 bg-surface grid grid-cols-2 gap-y-2">
+<div class="flex flex-col">
+<span class="font-label-caps text-[10px] text-on-surface-variant">FRP</span>
+<span class="font-data-md text-data-md text-on-surface">182.4 MW</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-[10px] text-on-surface-variant">BRIGHTNESS</span>
+<span class="font-data-md text-data-md text-on-surface">1240 K</span>
+</div>
+</div>
+</div>
+<div class="border border-outline-variant">
+<div class="bg-surface-container-highest px-3 py-1 border-b border-outline-variant">
+<span class="font-label-caps text-label-caps text-on-surface-variant">TEMPORAL</span>
+</div>
+<div class="p-3 bg-surface">
+<div class="flex flex-col">
+<span class="font-label-caps text-[10px] text-on-surface-variant">PERSISTENCE</span>
+<span class="font-data-md text-data-md text-on-surface">7-day active duration</span>
+</div>
+</div>
+</div>
+<div class="border border-outline-variant">
+<div class="bg-surface-container-highest px-3 py-1 border-b border-outline-variant">
+<span class="font-label-caps text-label-caps text-on-surface-variant">SPATIAL</span>
+</div>
+<div class="p-3 bg-surface">
+<div class="flex flex-col">
+<span class="font-label-caps text-[10px] text-on-surface-variant">PROXIMITY</span>
+<span class="font-data-md text-data-md text-on-surface">0.42 km from Oil &amp; Gas Facility</span>
+</div>
+</div>
+</div>
+<div class="border border-outline-variant">
+<div class="bg-surface-container-highest px-3 py-1 border-b border-outline-variant">
+<span class="font-label-caps text-label-caps text-on-surface-variant">LAND COVER</span>
+</div>
+<div class="p-3 bg-surface">
+<span class="font-body-sm text-body-sm text-on-surface">Industrial / Built-up</span>
+</div>
+</div>
+<!-- Explainability Section -->
+<div class="pt-4 border-t border-outline-variant">
+<span class="font-label-caps text-label-caps text-on-surface-variant block mb-3">WHY H-8921 IS RELEVANT</span>
+<ul class="space-y-2">
+<li class="flex items-start gap-2">
+<span class="material-symbols-outlined text-primary text-[16px] mt-0.5">check</span>
+<span class="font-body-sm text-body-sm text-on-surface">Matches "persistent" criteria (&gt;5 days continuous detection).</span>
+</li>
+<li class="flex items-start gap-2">
+<span class="material-symbols-outlined text-primary text-[16px] mt-0.5">check</span>
+<span class="font-body-sm text-body-sm text-on-surface">High intensity (FRP 182.4 MW) exceeds baseline thresholds.</span>
+</li>
+<li class="flex items-start gap-2">
+<span class="material-symbols-outlined text-primary text-[16px] mt-0.5">check</span>
+<span class="font-body-sm text-body-sm text-on-surface">Geospatial intersection with designated "Oil and Gas" polygon buffer (0.42 km).</span>
+</li>
+</ul>
+</div>
+</div>
+</aside>
+</main>
+</body></html>

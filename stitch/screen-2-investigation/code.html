@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Hotspot Investigation - Thermal Intelligence System</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-secondary": "#233144",
+                        "primary-container": "#0f172a",
+                        "error-container": "#93000a",
+                        "surface-container-low": "#1b1b1d",
+                        "inverse-primary": "#565e74",
+                        "on-surface": "#e4e2e4",
+                        "surface-container-highest": "#353436",
+                        "surface-container-high": "#2a2a2b",
+                        "surface-tint": "#bec6e0",
+                        "background": "#131315",
+                        "on-error": "#690005",
+                        "on-primary": "#283044",
+                        "inverse-surface": "#e4e2e4",
+                        "on-primary-container": "#798098",
+                        "on-tertiary": "#3e2d11",
+                        "on-tertiary-container": "#957d5a",
+                        "on-tertiary-fixed": "#271901",
+                        "on-secondary-fixed-variant": "#3a485c",
+                        "surface-container-lowest": "#0e0e10",
+                        "secondary-fixed": "#d5e3fd",
+                        "on-primary-fixed": "#131b2e",
+                        "tertiary-fixed-dim": "#dec29a",
+                        "surface": "#131315",
+                        "primary": "#bec6e0",
+                        "surface-variant": "#353436",
+                        "primary-fixed": "#dae2fd",
+                        "tertiary-container": "#231500",
+                        "secondary": "#b9c7e0",
+                        "surface-dim": "#131315",
+                        "on-background": "#e4e2e4",
+                        "secondary-container": "#3c4a5e",
+                        "outline": "#909097",
+                        "tertiary": "#dec29a",
+                        "on-error-container": "#ffdad6",
+                        "error": "#ffb4ab",
+                        "surface-bright": "#39393b",
+                        "surface-container": "#1f1f21",
+                        "on-secondary-fixed": "#0d1c2f",
+                        "on-secondary-container": "#abb9d2",
+                        "primary-fixed-dim": "#bec6e0",
+                        "on-surface-variant": "#c6c6cd",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "on-tertiary-fixed-variant": "#574425",
+                        "secondary-fixed-dim": "#b9c7e0",
+                        "outline-variant": "#45464d",
+                        "tertiary-fixed": "#fcdeb5",
+                        "inverse-on-surface": "#303032",
+                        "wildfire": "#ff6b6b",
+                        "ag-burning": "#fca311",
+                        "industrial": "#4ecdc4",
+                        "gas-flare": "#c77dff"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0px",
+                        "lg": "0px",
+                        "xl": "0px",
+                        "full": "0px"
+                    },
+                    spacing: {
+                        "sidebar-width": "320px",
+                        "toolbar-width": "48px",
+                        "unit": "4px",
+                        "gutter": "12px",
+                        "margin-compact": "8px"
+                    },
+                    fontFamily: {
+                        "label-caps": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "data-lg": ["JetBrains Mono"],
+                        "data-md": ["JetBrains Mono"],
+                        "headline-sm": ["Inter"]
+                    },
+                    fontSize: {
+                        "label-caps": ["11px", { lineHeight: "14px", letterSpacing: "0.05em", fontWeight: "700" }],
+                        "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+                        "body-sm": ["12px", { lineHeight: "16px", fontWeight: "400" }],
+                        "data-lg": ["16px", { lineHeight: "20px", fontWeight: "500" }],
+                        "data-md": ["13px", { lineHeight: "18px", fontWeight: "500" }],
+                        "headline-sm": ["18px", { lineHeight: "24px", letterSpacing: "-0.01em", fontWeight: "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { @apply bg-background text-on-background font-body-md; }
+        .border-1px { @apply border border-outline-variant; }
+        /* Scrollbar styling for a cleaner look */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #45464d; border-radius: 0px; }
+        ::-webkit-scrollbar-thumb:hover { background: #909097; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+<!-- TopNavBar -->
+<nav class="bg-surface-container-lowest dark:bg-surface-container-lowest border-b border-outline-variant w-full h-toolbar-width flex justify-between items-center px-gutter shrink-0 z-50">
+<div class="flex items-center gap-4">
+<span class="font-headline-sm text-headline-sm text-primary uppercase tracking-tighter">Thermal Intelligence</span>
+<div class="hidden md:flex items-center gap-6 ml-8 h-full">
+<div class="text-primary font-bold border-b-2 border-primary pb-1 cursor-pointer active:opacity-80 h-full flex items-center px-2 mt-[2px]">Dashboard</div>
+<div class="text-on-surface-variant font-medium cursor-pointer hover:bg-surface-container-high transition-colors h-full flex items-center px-2">Analytics</div>
+<div class="text-on-surface-variant font-medium cursor-pointer hover:bg-surface-container-high transition-colors h-full flex items-center px-2">Alerts</div>
+<div class="text-on-surface-variant font-medium cursor-pointer hover:bg-surface-container-high transition-colors h-full flex items-center px-2">AI Investigator</div>
+<div class="text-on-surface-variant font-medium cursor-pointer hover:bg-surface-container-high transition-colors h-full flex items-center px-2">System Status</div>
+</div>
+</div>
+<div class="flex items-center gap-4 text-primary dark:text-primary">
+<span class="material-symbols-outlined cursor-pointer hover:bg-surface-container-high transition-colors p-1" data-icon="account_circle">account_circle</span>
+<span class="material-symbols-outlined cursor-pointer hover:bg-surface-container-high transition-colors p-1" data-icon="settings">settings</span>
+<span class="material-symbols-outlined cursor-pointer hover:bg-surface-container-high transition-colors p-1" data-icon="help_outline">help_outline</span>
+</div>
+</nav>
+<!-- Header Compact -->
+<header class="bg-surface-container-low border-b border-outline-variant px-gutter py-2 flex items-center justify-between shrink-0">
+<div class="flex items-center gap-4">
+<button class="flex items-center text-primary hover:text-white transition-colors border-1px p-1 bg-surface-container-highest">
+<span class="material-symbols-outlined text-[18px]" data-icon="arrow_back">arrow_back</span>
+</button>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-3">
+<h1 class="font-data-lg text-data-lg text-white">H-8921</h1>
+<span class="bg-gas-flare/10 text-gas-flare font-label-caps text-label-caps px-2 py-0.5 border border-gas-flare/30">GAS FLARE (91%)</span>
+<span class="bg-error-container/20 text-error font-label-caps text-label-caps px-2 py-0.5 border border-error/50">87/100 HIGH RISK</span>
+</div>
+<div class="h-4 w-[1px] bg-outline-variant mx-2"></div>
+<div class="flex items-center gap-4 text-on-surface-variant font-data-md text-[12px]">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">location_on</span>28.6139° N, 77.2090° E</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">schedule</span>27 AUG 2026 • 12:30</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">satellite</span>VIIRS</span>
+</div>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="bg-surface-container border-1px px-3 py-1 font-body-sm hover:bg-surface-variant transition-colors flex items-center gap-1 text-on-surface-variant"><span class="material-symbols-outlined text-[16px]">share</span> Export</button>
+<button class="bg-primary/10 text-primary border border-primary/30 px-3 py-1 font-body-sm hover:bg-primary/20 transition-colors flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">lab_profile</span> Full Report</button>
+</div>
+</header>
+<!-- Main Workspace -->
+<main class="flex-1 flex overflow-hidden">
+<!-- Two Column Layout -->
+<div class="flex flex-1 flex-col lg:flex-row p-gutter gap-gutter min-h-0">
+<!-- Left Column (GIS Map) -->
+<div class="w-full lg:w-[60%] flex flex-col bg-surface-container border-1px relative overflow-hidden group">
+<img class="absolute inset-0 w-full h-full object-cover opacity-80" data-alt="A highly detailed satellite map centered on a high-contrast industrial region. The scene is illuminated by scientific dark-mode mapping aesthetics. A distinct digital crosshair marker pinpoints a high-intensity thermal anomaly representing a gas flare, connected via a precise, glowing dashed line to a nearby geometric icon representing an oil facility. The map features subtle topographical lines and grid overlays in muted grays and slate blues against a near-black background." data-location="New Delhi" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDg_e3hFnMAUE5BCFga57DcdTwI1DA3SQqoICRC2ZIGh86cHS5IJ-TW-W1JlcMvmqTM6bEGZ8W0pvMLfFHZJav_DQ8xsTv9gqmjpe9aVUUB4P2EyTGxrh6Vx-wac-r6q5KUR372DGi1GGSkS-xQFUWDun_mXPGCYZHGuE3Rx7ud2-5kU3CSi4Z11Oy6A67LnfRXhYPH4TN-P0_P1igm-oaagl80auj7TvuilsHvKoSl-jnbs76L9jikow"/>
+<!-- Map HUD Elements -->
+<div class="absolute top-4 left-4 flex flex-col gap-2 z-10">
+<div class="bg-surface-container-low/90 backdrop-blur-sm border-1px p-2 flex flex-col gap-1">
+<button class="hover:bg-surface-container-highest p-1 text-on-surface"><span class="material-symbols-outlined text-[18px]">add</span></button>
+<div class="h-[1px] w-full bg-outline-variant"></div>
+<button class="hover:bg-surface-container-highest p-1 text-on-surface"><span class="material-symbols-outlined text-[18px]">remove</span></button>
+</div>
+</div>
+<!-- Target Marker & Radius Overlay (CSS Simulation) -->
+<div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
+<!-- Connecting Line -->
+<div class="absolute w-32 h-[1px] border-b border-dashed border-primary left-4 top-4 origin-left rotate-45"></div>
+<!-- Target -->
+<div class="w-8 h-8 border border-gas-flare flex items-center justify-center bg-gas-flare/20 shadow-[0_0_15px_rgba(199,125,255,0.4)]">
+<div class="w-2 h-2 bg-gas-flare shadow-[0_0_10px_rgba(199,125,255,0.8)]"></div>
+</div>
+<div class="absolute w-64 h-64 border border-outline-variant/50 rounded-full flex items-center justify-center">
+<span class="absolute top-2 left-1/2 transform -translate-x-1/2 font-data-md text-[10px] text-on-surface-variant bg-surface px-1 border border-outline-variant">0.42 km</span>
+</div>
+</div>
+<!-- Labels -->
+<div class="absolute top-[55%] left-[55%] z-10 bg-surface-container-lowest/80 border border-outline-variant p-1.5 backdrop-blur-sm flex items-center gap-2 pointer-events-none">
+<span class="material-symbols-outlined text-[14px] text-primary">factory</span>
+<span class="font-label-caps text-label-caps text-on-surface tracking-wider">OIL &amp; GAS FACILITY</span>
+</div>
+<div class="absolute bottom-4 right-4 text-outline font-data-md text-[10px]">
+    Map Data © Thermal Intel Sys
+</div>
+</div>
+<!-- Right Column (Intelligence) -->
+<div class="w-full lg:w-[40%] flex flex-col border-1px bg-surface-container-low overflow-y-auto">
+<div class="p-4 flex flex-col gap-6">
+<!-- Classification Probabilities -->
+<div>
+<h3 class="font-label-caps text-label-caps text-on-surface-variant mb-3 flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">analytics</span> CLASSIFICATION PROBABILITIES</h3>
+<div class="flex flex-col gap-1.5">
+<!-- Bars -->
+<div class="flex items-center gap-2">
+<span class="font-data-md text-[11px] w-24 shrink-0 text-gas-flare">Gas Flare</span>
+<div class="flex-1 bg-surface-container h-3 border border-outline-variant/30 relative">
+<div class="absolute inset-y-0 left-0 bg-gas-flare" style="width: 91%"></div>
+</div>
+<span class="font-data-md text-[11px] w-8 text-right">91%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-data-md text-[11px] w-24 shrink-0 text-industrial/80">Industrial Fire</span>
+<div class="flex-1 bg-surface-container h-3 border border-outline-variant/30 relative">
+<div class="absolute inset-y-0 left-0 bg-industrial/50" style="width: 6%"></div>
+</div>
+<span class="font-data-md text-[11px] w-8 text-right text-on-surface-variant">6%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-data-md text-[11px] w-24 shrink-0 text-on-surface-variant">Wildfire</span>
+<div class="flex-1 bg-surface-container h-3 border border-outline-variant/30 relative">
+<div class="absolute inset-y-0 left-0 bg-wildfire/30" style="width: 1%"></div>
+</div>
+<span class="font-data-md text-[11px] w-8 text-right text-on-surface-variant">1%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-data-md text-[11px] w-24 shrink-0 text-on-surface-variant">Ag-Burning</span>
+<div class="flex-1 bg-surface-container h-3 border border-outline-variant/30 relative">
+<div class="absolute inset-y-0 left-0 bg-ag-burning/30" style="width: 1%"></div>
+</div>
+<span class="font-data-md text-[11px] w-8 text-right text-on-surface-variant">1%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-data-md text-[11px] w-24 shrink-0 text-on-surface-variant">Persistent Src</span>
+<div class="flex-1 bg-surface-container h-3 border border-outline-variant/30 relative">
+<div class="absolute inset-y-0 left-0 bg-primary/30" style="width: 1%"></div>
+</div>
+<span class="font-data-md text-[11px] w-8 text-right text-on-surface-variant">1%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-data-md text-[11px] w-24 shrink-0 text-on-surface-variant">Unknown</span>
+<div class="flex-1 bg-surface-container h-3 border border-outline-variant/30 relative">
+<div class="absolute inset-y-0 left-0 bg-outline/30" style="width: 0%"></div>
+</div>
+<span class="font-data-md text-[11px] w-8 text-right text-on-surface-variant">0%</span>
+</div>
+</div>
+</div>
+<!-- Divider -->
+<div class="h-[1px] bg-outline-variant/50 w-full"></div>
+<!-- Evidence Fusion -->
+<div>
+<h3 class="font-label-caps text-label-caps text-on-surface-variant mb-3 flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">hub</span> EVIDENCE FUSION</h3>
+<div class="border-l border-outline-variant ml-2 pl-4 flex flex-col gap-4 py-1">
+<div class="relative">
+<div class="absolute w-2 h-2 rounded-full bg-primary -left-[21px] top-1.5"></div>
+<div class="flex justify-between items-start">
+<div>
+<div class="text-[12px] font-bold text-on-surface">Thermal Signature</div>
+<div class="text-[11px] text-on-surface-variant font-data-md">High FRP (120 MW), High Temp (~1450K)</div>
+</div>
+<span class="text-[10px] bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 font-label-caps">STRONG</span>
+</div>
+</div>
+<div class="relative">
+<div class="absolute w-2 h-2 rounded-full bg-primary -left-[21px] top-1.5"></div>
+<div class="flex justify-between items-start">
+<div>
+<div class="text-[12px] font-bold text-on-surface">Temporal Pattern</div>
+<div class="text-[11px] text-on-surface-variant font-data-md">Persistent continuous detection (7 days)</div>
+</div>
+<span class="text-[10px] bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 font-label-caps">STRONG</span>
+</div>
+</div>
+<div class="relative">
+<div class="absolute w-2 h-2 rounded-full bg-primary/50 -left-[21px] top-1.5"></div>
+<div class="flex justify-between items-start">
+<div>
+<div class="text-[12px] font-bold text-on-surface">Spatial Context</div>
+<div class="text-[11px] text-on-surface-variant font-data-md">0.42 km from nearest facility</div>
+</div>
+<span class="text-[10px] bg-surface-container-high text-on-surface-variant border border-outline-variant px-1.5 py-0.5 font-label-caps">MODERATE</span>
+</div>
+</div>
+<div class="relative">
+<div class="absolute w-2 h-2 rounded-full bg-primary -left-[21px] top-1.5"></div>
+<div class="flex justify-between items-start">
+<div>
+<div class="text-[12px] font-bold text-on-surface">Land Cover</div>
+<div class="text-[11px] text-on-surface-variant font-data-md">Industrial zone confirmed</div>
+</div>
+<span class="text-[10px] bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.5 font-label-caps">STRONG</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Divider -->
+<div class="h-[1px] bg-outline-variant/50 w-full"></div>
+<!-- Why this classification -->
+<div>
+<h3 class="font-label-caps text-label-caps text-on-surface-variant mb-3 flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">psychology</span> WHY THIS CLASSIFICATION?</h3>
+<ul class="flex flex-col gap-2 text-[12px] text-on-surface mb-3">
+<li class="flex items-start gap-2">
+<span class="material-symbols-outlined text-[14px] text-primary shrink-0 mt-0.5">check_circle</span>
+<span>High-temperature signature typical of hydrocarbon combustion.</span>
+</li>
+<li class="flex items-start gap-2">
+<span class="material-symbols-outlined text-[14px] text-primary shrink-0 mt-0.5">check_circle</span>
+<span>Static geographic position over 7-day monitoring period.</span>
+</li>
+<li class="flex items-start gap-2">
+<span class="material-symbols-outlined text-[14px] text-primary shrink-0 mt-0.5">check_circle</span>
+<span>Proximity to mapped oil/gas infrastructure (&lt; 0.5km).</span>
+</li>
+</ul>
+<div class="bg-surface-container border border-outline-variant p-2 flex items-center gap-2 text-[11px] text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">info</span> No significant conflicting evidence found.
+</div>
+</div>
+<!-- Divider -->
+<div class="h-[1px] bg-outline-variant/50 w-full"></div>
+<!-- Operational Risk -->
+<div>
+<h3 class="font-label-caps text-label-caps text-on-surface-variant mb-3 flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">warning</span> OPERATIONAL RISK <span class="ml-auto text-error font-data-md">87/100 HIGH</span></h3>
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-3">
+<span class="text-[11px] font-data-md text-on-surface-variant w-24">Intensity</span>
+<div class="flex-1 h-1.5 bg-surface-container overflow-hidden">
+<div class="h-full bg-error" style="width: 95%"></div>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-[11px] font-data-md text-on-surface-variant w-24">Persistence</span>
+<div class="flex-1 h-1.5 bg-surface-container overflow-hidden">
+<div class="h-full bg-error" style="width: 100%"></div>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-[11px] font-data-md text-on-surface-variant w-24">Proximity</span>
+<div class="flex-1 h-1.5 bg-surface-container overflow-hidden">
+<div class="h-full bg-ag-burning" style="width: 70%"></div>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-[11px] font-data-md text-on-surface-variant w-24">Confidence</span>
+<div class="flex-1 h-1.5 bg-surface-container overflow-hidden">
+<div class="h-full bg-error" style="width: 90%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Timeline Section -->
+<footer class="bg-surface-container border-t border-outline-variant shrink-0 p-gutter">
+<div class="flex items-center justify-between mb-2">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant flex items-center gap-2"><span class="material-symbols-outlined text-[14px]">timeline</span> 7-DAY PERSISTENCE TIMELINE</h3>
+<div class="text-[11px] font-data-md text-on-surface-variant">100% Detection Rate</div>
+</div>
+<div class="flex justify-between items-center relative pt-4 pb-2 px-4">
+<!-- Connecting Line -->
+<div class="absolute left-6 right-6 top-[22px] h-[1px] bg-outline-variant"></div>
+<!-- Timeline Nodes -->
+<div class="flex flex-col items-center gap-2 relative z-10">
+<div class="w-3 h-3 rounded-full bg-gas-flare border-2 border-surface-container shadow-[0_0_5px_rgba(199,125,255,0.5)]"></div>
+<span class="text-[10px] font-data-md text-on-surface-variant">21 AUG</span>
+</div>
+<div class="flex flex-col items-center gap-2 relative z-10">
+<div class="w-3 h-3 rounded-full bg-gas-flare border-2 border-surface-container shadow-[0_0_5px_rgba(199,125,255,0.5)]"></div>
+<span class="text-[10px] font-data-md text-on-surface-variant">22 AUG</span>
+</div>
+<div class="flex flex-col items-center gap-2 relative z-10">
+<div class="w-3 h-3 rounded-full bg-gas-flare border-2 border-surface-container shadow-[0_0_5px_rgba(199,125,255,0.5)]"></div>
+<span class="text-[10px] font-data-md text-on-surface-variant">23 AUG</span>
+</div>
+<div class="flex flex-col items-center gap-2 relative z-10">
+<div class="w-3 h-3 rounded-full bg-gas-flare border-2 border-surface-container shadow-[0_0_5px_rgba(199,125,255,0.5)]"></div>
+<span class="text-[10px] font-data-md text-on-surface-variant">24 AUG</span>
+</div>
+<div class="flex flex-col items-center gap-2 relative z-10">
+<div class="w-3 h-3 rounded-full bg-gas-flare border-2 border-surface-container shadow-[0_0_5px_rgba(199,125,255,0.5)]"></div>
+<span class="text-[10px] font-data-md text-on-surface-variant">25 AUG</span>
+</div>
+<div class="flex flex-col items-center gap-2 relative z-10">
+<div class="w-3 h-3 rounded-full bg-gas-flare border-2 border-surface-container shadow-[0_0_5px_rgba(199,125,255,0.5)]"></div>
+<span class="text-[10px] font-data-md text-on-surface-variant">26 AUG</span>
+</div>
+<div class="flex flex-col items-center gap-2 relative z-10">
+<div class="w-4 h-4 rounded-full bg-gas-flare border-2 border-surface-container flex items-center justify-center shadow-[0_0_8px_rgba(199,125,255,0.8)]">
+<div class="w-1.5 h-1.5 bg-surface-container rounded-full"></div>
+</div>
+<span class="text-[10px] font-data-md text-white font-bold">27 AUG (NOW)</span>
+</div>
+</div>
+</footer>
+</body></html>

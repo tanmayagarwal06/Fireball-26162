@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Alert &amp; Risk Center | THERMAL INTELLIGENCE</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary-container": "#957d5a",
+                        "on-error": "#690005",
+                        "outline-variant": "#45464d",
+                        "surface": "#131315",
+                        "on-secondary-fixed-variant": "#3a485c",
+                        "tertiary-container": "#231500",
+                        "primary": "#bec6e0",
+                        "error": "#ffb4ab",
+                        "inverse-on-surface": "#303032",
+                        "surface-variant": "#353436",
+                        "on-secondary-fixed": "#0d1c2f",
+                        "primary-container": "#0f172a",
+                        "on-primary": "#283044",
+                        "tertiary": "#dec29a",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "tertiary-fixed": "#fcdeb5",
+                        "surface-container-lowest": "#0e0e10",
+                        "surface-tint": "#bec6e0",
+                        "on-tertiary-fixed": "#271901",
+                        "on-tertiary-fixed-variant": "#574425",
+                        "primary-fixed-dim": "#bec6e0",
+                        "on-secondary": "#233144",
+                        "on-surface-variant": "#c6c6cd",
+                        "on-primary-fixed": "#131b2e",
+                        "secondary": "#b9c7e0",
+                        "surface-container-highest": "#353436",
+                        "error-container": "#93000a",
+                        "on-surface": "#e4e2e4",
+                        "tertiary-fixed-dim": "#dec29a",
+                        "inverse-surface": "#e4e2e4",
+                        "outline": "#909097",
+                        "surface-bright": "#39393b",
+                        "on-secondary-container": "#abb9d2",
+                        "on-tertiary": "#3e2d11",
+                        "on-background": "#e4e2e4",
+                        "secondary-fixed-dim": "#b9c7e0",
+                        "inverse-primary": "#565e74",
+                        "surface-container": "#1f1f21",
+                        "surface-container-low": "#1b1b1d",
+                        "primary-fixed": "#dae2fd",
+                        "surface-container-high": "#2a2a2b",
+                        "on-primary-container": "#798098",
+                        "secondary-fixed": "#d5e3fd",
+                        "background": "#131315",
+                        "secondary-container": "#3c4a5e",
+                        "surface-dim": "#131315"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "toolbar-width": "48px",
+                        "unit": "4px",
+                        "margin-compact": "8px",
+                        "sidebar-width": "320px",
+                        "gutter": "12px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Inter"],
+                        "data-lg": ["JetBrains Mono"],
+                        "headline-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "data-md": ["JetBrains Mono"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["11px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "data-lg": ["16px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-sm": ["18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "data-md": ["13px", { "lineHeight": "18px", "fontWeight": "500" }],
+                        "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: theme('colors.background'); color: theme('colors.on-background'); }
+        /* Scientific Minimalism specific styles */
+        .grid-bg {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(144, 144, 151, 0.05) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(144, 144, 151, 0.05) 1px, transparent 1px);
+        }
+        .data-table-row:hover { background-color: theme('colors.surface-container-high'); }
+        .data-table-row { transition: background-color 150ms ease; cursor: pointer; }
+        .data-table-row.selected { background-color: theme('colors.surface-container-high'); border-left-color: theme('colors.primary'); }
+        
+        /* Custom Scrollbar for scientific feel */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: theme('colors.surface-container-lowest'); }
+        ::-webkit-scrollbar-thumb { background: theme('colors.outline-variant'); }
+        ::-webkit-scrollbar-thumb:hover { background: theme('colors.outline'); }
+    </style>
+</head>
+<body class="h-screen w-full flex flex-col overflow-hidden font-body-md text-body-md bg-background text-on-background selection:bg-primary-container selection:text-primary grid-bg">
+<!-- TopNavBar -->
+<header class="bg-surface border-b border-outline-variant flex justify-between items-center px-gutter w-full h-toolbar-width z-50 shrink-0">
+<div class="flex items-center h-full gap-6">
+<span class="font-headline-sm text-headline-sm font-bold tracking-tighter text-on-surface uppercase whitespace-nowrap">
+                THERMAL INTELLIGENCE
+            </span>
+<nav class="hidden md:flex h-full items-center gap-6">
+<!-- Dashboard -->
+<a class="h-full flex flex-col justify-center text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors duration-150 relative group" href="#">
+<span>Dashboard</span>
+</a>
+<!-- Analytics -->
+<a class="h-full flex flex-col justify-center text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors duration-150 relative group" href="#">
+<span>Analytics</span>
+</a>
+<!-- Alerts (ACTIVE) -->
+<a class="h-full flex flex-col justify-center text-primary border-b-2 border-primary pb-[2px] mt-[2px] opacity-80 transition-opacity font-body-md text-body-md relative group" href="#">
+<span>Alerts</span>
+</a>
+<!-- AI Investigator -->
+<a class="h-full flex flex-col justify-center text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors duration-150 relative group" href="#">
+<span>AI Investigator</span>
+</a>
+<!-- System Status -->
+<a class="h-full flex flex-col justify-center text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors duration-150 relative group" href="#">
+<span>System Status</span>
+</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden lg:flex items-center bg-surface-container border border-outline-variant rounded px-2 py-1 focus-within:border-primary transition-colors h-8">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant mr-2">search</span>
+<input class="bg-transparent border-none p-0 text-body-sm font-body-sm text-on-surface placeholder:text-on-surface-variant focus:ring-0 w-48" placeholder="Search parameters..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<button class="text-on-surface-variant hover:text-primary transition-colors w-8 h-8 flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors w-8 h-8 flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+</button>
+<img alt="Operator Profile" class="w-8 h-8 rounded-full border border-outline-variant object-cover ml-2" data-alt="A small, circular avatar portrait of an operative or analyst in a dark, tactical command center setting, wearing a dark gray turtleneck, illuminated by subtle cool blue monitor glow. Hyper-realistic, professional, scientific aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC63CMsIHDHbgEdUtmPt_0dHRPJdIQPlI9Qa2Qu1bKQfTDRtP8OMhU7YbrlhqhGog4yViGAGMJySid2asWZzDNM5frVt7d1H0SPcJgMxMvIK4n03H42CQOpUGpyydm8_oIuFk9VfMMtGJ2MeCFxMiIMVtfBugAJHIVuyZ85DQWlNG301qhdymnXHtyJqrlqA1v-2W0BWrzjuF-R-0TvHD2UkEtgVlNomhiia3E2XZEb-PkxLHKBVKRFuQ"/>
+</div>
+</div>
+</header>
+<!-- Main Workspace -->
+<main class="flex-1 flex flex-col overflow-hidden relative">
+<!-- 1. RISK SUMMARY STRIP -->
+<div class="bg-surface-container-lowest border-b border-outline-variant flex items-center px-gutter h-12 shrink-0 gap-8 overflow-x-auto">
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Total Active Alerts:</span>
+<span class="font-data-md text-data-md text-on-surface">1,248</span>
+</div>
+<div class="h-4 w-px bg-outline-variant"></div>
+<div class="flex gap-6">
+<!-- Critical -->
+<div class="flex items-center gap-2 border-l-2 border-error pl-2 bg-error-container/10 px-2 py-0.5">
+<span class="font-label-caps text-label-caps text-error uppercase">Critical</span>
+<span class="font-data-md text-data-md text-error">12</span>
+</div>
+<!-- High -->
+<div class="flex items-center gap-2 border-l-2 border-[#f59e0b] pl-2 px-2 py-0.5">
+<span class="font-label-caps text-label-caps text-[#f59e0b] uppercase">High</span>
+<span class="font-data-md text-data-md text-on-surface">142</span>
+</div>
+<!-- Medium -->
+<div class="flex items-center gap-2 border-l-2 border-primary pl-2 px-2 py-0.5">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Medium</span>
+<span class="font-data-md text-data-md text-on-surface">486</span>
+</div>
+<!-- Low -->
+<div class="flex items-center gap-2 border-l-2 border-outline-variant pl-2 px-2 py-0.5">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Low</span>
+<span class="font-data-md text-data-md text-on-surface-variant">608</span>
+</div>
+</div>
+</div>
+<!-- 2. FILTER BAR -->
+<div class="bg-surface border-b border-outline-variant flex items-center px-gutter py-2 shrink-0 gap-3 overflow-x-auto no-scrollbar">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant mr-1">filter_list</span>
+<select class="bg-surface-container border border-outline-variant text-body-sm font-body-sm text-on-surface py-1 pl-2 pr-8 focus:ring-0 focus:border-on-surface h-7">
+<option>Risk: All</option>
+<option>Risk: Critical &amp; High</option>
+</select>
+<select class="bg-surface-container border border-outline-variant text-body-sm font-body-sm text-on-surface py-1 pl-2 pr-8 focus:ring-0 focus:border-on-surface h-7">
+<option>Class: All</option>
+<option>Wildfire</option>
+<option>Gas Flare</option>
+<option>Industrial Fire</option>
+<option>Agricultural Burning</option>
+</select>
+<select class="bg-surface-container border border-outline-variant text-body-sm font-body-sm text-on-surface py-1 pl-2 pr-8 focus:ring-0 focus:border-on-surface h-7">
+<option>Date: Any</option>
+<option>Last 24h</option>
+<option>Last 7 Days</option>
+</select>
+<select class="bg-surface-container border border-outline-variant text-body-sm font-body-sm text-on-surface py-1 pl-2 pr-8 focus:ring-0 focus:border-on-surface h-7">
+<option>Persistence: All</option>
+<option>&gt; 3 Days</option>
+<option>&gt; 7 Days</option>
+</select>
+<select class="bg-surface-container border border-outline-variant text-body-sm font-body-sm text-on-surface py-1 pl-2 pr-8 focus:ring-0 focus:border-on-surface h-7">
+<option>Ind. Prox: All</option>
+<option>&lt; 1 km</option>
+<option>&lt; 5 km</option>
+</select>
+<select class="bg-surface-container border border-outline-variant text-body-sm font-body-sm text-on-surface py-1 pl-2 pr-8 focus:ring-0 focus:border-on-surface h-7">
+<option>Status: All</option>
+<option>Needs Investigation</option>
+<option>Investigating</option>
+<option>Reviewed</option>
+<option>New</option>
+</select>
+<select class="bg-surface-container border border-outline-variant text-body-sm font-body-sm text-on-surface py-1 pl-2 pr-8 focus:ring-0 focus:border-on-surface h-7 ml-auto">
+<option>Sort: Highest Risk</option>
+<option>Most Persistent</option>
+<option>Nearest Facility</option>
+<option>Most Recent</option>
+</select>
+</div>
+<!-- 3. PRIORITIZED ALERT QUEUE (Main Content) -->
+<div class="flex-1 overflow-auto bg-background relative flex flex-col">
+<table class="w-full text-left border-collapse min-w-[1000px]">
+<thead class="sticky top-0 bg-surface z-10 border-b border-outline-variant font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">
+<tr>
+<th class="py-2 px-4 w-12 text-center">#</th>
+<th class="py-2 px-4">Hotspot ID</th>
+<th class="py-2 px-4">Classification</th>
+<th class="py-2 px-4">Risk</th>
+<th class="py-2 px-4">Conf.</th>
+<th class="py-2 px-4">Location</th>
+<th class="py-2 px-4">Persistence</th>
+<th class="py-2 px-4">Ind. Prox.</th>
+<th class="py-2 px-4">Detection Time</th>
+<th class="py-2 px-4">Status</th>
+</tr>
+</thead>
+<tbody class="font-data-md text-data-md text-on-surface divide-y divide-outline-variant border-b border-outline-variant">
+<!-- Row 1: Critical (Selected) -->
+<tr class="data-table-row selected border-l-2 border-l-error bg-error-container/10 relative">
+<td class="py-2 px-4 text-center text-on-surface-variant text-[10px]">01</td>
+<td class="py-2 px-4 font-bold text-error">H-8847</td>
+<td class="py-2 px-4"><span class="bg-surface-container-high px-1.5 py-0.5 rounded-sm border border-outline-variant font-body-sm text-body-sm">Industrial Fire</span></td>
+<td class="py-2 px-4 text-error">94</td>
+<td class="py-2 px-4">93%</td>
+<td class="py-2 px-4 text-on-surface-variant">28.61° N, 77.21° E</td>
+<td class="py-2 px-4">5 days</td>
+<td class="py-2 px-4 text-error">0.80 km</td>
+<td class="py-2 px-4 text-on-surface-variant">27 AUG 2026 · 10:42</td>
+<td class="py-2 px-4"><span class="text-error font-body-sm text-body-sm uppercase tracking-wide text-[10px]">Needs Investigation</span></td>
+</tr>
+<!-- Row 2: Critical -->
+<tr class="data-table-row border-l-2 border-l-error bg-error-container/5 relative">
+<td class="py-2 px-4 text-center text-on-surface-variant text-[10px]">02</td>
+<td class="py-2 px-4 font-bold text-error">H-9012</td>
+<td class="py-2 px-4"><span class="bg-surface-container-high px-1.5 py-0.5 rounded-sm border border-outline-variant font-body-sm text-body-sm">Gas Flare</span></td>
+<td class="py-2 px-4 text-error">91</td>
+<td class="py-2 px-4">89%</td>
+<td class="py-2 px-4 text-on-surface-variant">28.62° N, 77.20° E</td>
+<td class="py-2 px-4">8 days</td>
+<td class="py-2 px-4 text-error">0.31 km</td>
+<td class="py-2 px-4 text-on-surface-variant">27 AUG 2026 · 09:18</td>
+<td class="py-2 px-4"><span class="text-on-surface font-body-sm text-body-sm uppercase tracking-wide text-[10px]">New</span></td>
+</tr>
+<!-- Row 3: High -->
+<tr class="data-table-row border-l-2 border-l-[#f59e0b] relative">
+<td class="py-2 px-4 text-center text-on-surface-variant text-[10px]">03</td>
+<td class="py-2 px-4 font-bold">H-8921</td>
+<td class="py-2 px-4"><span class="bg-surface-container-high px-1.5 py-0.5 rounded-sm border border-outline-variant font-body-sm text-body-sm">Gas Flare</span></td>
+<td class="py-2 px-4 text-[#f59e0b]">87</td>
+<td class="py-2 px-4">91%</td>
+<td class="py-2 px-4 text-on-surface-variant">28.6139° N, 77.2090° E</td>
+<td class="py-2 px-4 text-[#f59e0b]">7 days</td>
+<td class="py-2 px-4">0.42 km</td>
+<td class="py-2 px-4 text-on-surface-variant">27 AUG 2026 · 12:30</td>
+<td class="py-2 px-4"><span class="text-primary font-body-sm text-body-sm uppercase tracking-wide text-[10px]">Investigating</span></td>
+</tr>
+<!-- Row 4: High -->
+<tr class="data-table-row border-l-2 border-l-[#f59e0b] relative">
+<td class="py-2 px-4 text-center text-on-surface-variant text-[10px]">04</td>
+<td class="py-2 px-4 font-bold">H-8764</td>
+<td class="py-2 px-4"><span class="bg-surface-container-high px-1.5 py-0.5 rounded-sm border border-outline-variant font-body-sm text-body-sm">Wildfire</span></td>
+<td class="py-2 px-4 text-[#f59e0b]">78</td>
+<td class="py-2 px-4">86%</td>
+<td class="py-2 px-4 text-on-surface-variant">28.57° N, 77.18° E</td>
+<td class="py-2 px-4">3 days</td>
+<td class="py-2 px-4">4.20 km</td>
+<td class="py-2 px-4 text-on-surface-variant">26 AUG 2026 · 21:14</td>
+<td class="py-2 px-4"><span class="text-on-surface-variant font-body-sm text-body-sm uppercase tracking-wide text-[10px]">Reviewed</span></td>
+</tr>
+<!-- Row 5: Medium -->
+<tr class="data-table-row border-l-2 border-l-primary relative">
+<td class="py-2 px-4 text-center text-on-surface-variant text-[10px]">05</td>
+<td class="py-2 px-4 font-bold">H-8999</td>
+<td class="py-2 px-4"><span class="bg-surface-container-high px-1.5 py-0.5 rounded-sm border border-outline-variant font-body-sm text-body-sm">Agricultural Burning</span></td>
+<td class="py-2 px-4 text-primary">65</td>
+<td class="py-2 px-4">95%</td>
+<td class="py-2 px-4 text-on-surface-variant">28.70° N, 77.30° E</td>
+<td class="py-2 px-4">1 day</td>
+<td class="py-2 px-4">12.5 km</td>
+<td class="py-2 px-4 text-on-surface-variant">27 AUG 2026 · 08:05</td>
+<td class="py-2 px-4"><span class="text-on-surface font-body-sm text-body-sm uppercase tracking-wide text-[10px]">New</span></td>
+</tr>
+<!-- Row 6: Medium -->
+<tr class="data-table-row border-l-2 border-l-primary relative">
+<td class="py-2 px-4 text-center text-on-surface-variant text-[10px]">06</td>
+<td class="py-2 px-4 font-bold">H-8820</td>
+<td class="py-2 px-4"><span class="bg-surface-container-high px-1.5 py-0.5 rounded-sm border border-outline-variant font-body-sm text-body-sm">Persistent Thermal Source</span></td>
+<td class="py-2 px-4 text-primary">52</td>
+<td class="py-2 px-4">88%</td>
+<td class="py-2 px-4 text-on-surface-variant">28.50° N, 77.10° E</td>
+<td class="py-2 px-4">14 days</td>
+<td class="py-2 px-4">1.2 km</td>
+<td class="py-2 px-4 text-on-surface-variant">26 AUG 2026 · 14:22</td>
+<td class="py-2 px-4"><span class="text-on-surface-variant font-body-sm text-body-sm uppercase tracking-wide text-[10px]">Reviewed</span></td>
+</tr>
+<!-- Row 7: Medium -->
+<tr class="data-table-row border-l-2 border-l-primary relative">
+<td class="py-2 px-4 text-center text-on-surface-variant text-[10px]">07</td>
+<td class="py-2 px-4 font-bold">H-9033</td>
+<td class="py-2 px-4"><span class="bg-surface-container-high px-1.5 py-0.5 rounded-sm border border-outline-variant font-body-sm text-body-sm">Unknown</span></td>
+<td class="py-2 px-4 text-primary">48</td>
+<td class="py-2 px-4">72%</td>
+<td class="py-2 px-4 text-on-surface-variant">28.80° N, 77.40° E</td>
+<td class="py-2 px-4">&lt; 1 day</td>
+<td class="py-2 px-4">8.5 km</td>
+<td class="py-2 px-4 text-on-surface-variant">27 AUG 2026 · 11:55</td>
+<td class="py-2 px-4"><span class="text-on-surface font-body-sm text-body-sm uppercase tracking-wide text-[10px]">New</span></td>
+</tr>
+<!-- Row 8: Low -->
+<tr class="data-table-row border-l-2 border-l-outline-variant relative">
+<td class="py-2 px-4 text-center text-on-surface-variant text-[10px]">08</td>
+<td class="py-2 px-4 font-bold">H-8650</td>
+<td class="py-2 px-4"><span class="bg-surface-container-high px-1.5 py-0.5 rounded-sm border border-outline-variant font-body-sm text-body-sm">Gas Flare</span></td>
+<td class="py-2 px-4 text-on-surface-variant">35</td>
+<td class="py-2 px-4">98%</td>
+<td class="py-2 px-4 text-on-surface-variant">28.45° N, 77.05° E</td>
+<td class="py-2 px-4">30+ days</td>
+<td class="py-2 px-4">0.1 km</td>
+<td class="py-2 px-4 text-on-surface-variant">25 AUG 2026 · 06:10</td>
+<td class="py-2 px-4"><span class="text-on-surface-variant font-body-sm text-body-sm uppercase tracking-wide text-[10px]">Reviewed</span></td>
+</tr>
+<!-- Row 9: Low -->
+<tr class="data-table-row border-l-2 border-l-outline-variant relative">
+<td class="py-2 px-4 text-center text-on-surface-variant text-[10px]">09</td>
+<td class="py-2 px-4 font-bold">H-8905</td>
+<td class="py-2 px-4"><span class="bg-surface-container-high px-1.5 py-0.5 rounded-sm border border-outline-variant font-body-sm text-body-sm">Agricultural Burning</span></td>
+<td class="py-2 px-4 text-on-surface-variant">22</td>
+<td class="py-2 px-4">90%</td>
+<td class="py-2 px-4 text-on-surface-variant">28.90° N, 77.50° E</td>
+<td class="py-2 px-4">2 days</td>
+<td class="py-2 px-4">15.0 km</td>
+<td class="py-2 px-4 text-on-surface-variant">27 AUG 2026 · 07:30</td>
+<td class="py-2 px-4"><span class="text-on-surface-variant font-body-sm text-body-sm uppercase tracking-wide text-[10px]">Reviewed</span></td>
+</tr>
+<!-- Row 10: Low -->
+<tr class="data-table-row border-l-2 border-l-outline-variant relative">
+<td class="py-2 px-4 text-center text-on-surface-variant text-[10px]">10</td>
+<td class="py-2 px-4 font-bold">H-8711</td>
+<td class="py-2 px-4"><span class="bg-surface-container-high px-1.5 py-0.5 rounded-sm border border-outline-variant font-body-sm text-body-sm">Wildfire</span></td>
+<td class="py-2 px-4 text-on-surface-variant">15</td>
+<td class="py-2 px-4">85%</td>
+<td class="py-2 px-4 text-on-surface-variant">28.30° N, 77.60° E</td>
+<td class="py-2 px-4">1 day</td>
+<td class="py-2 px-4">20.5 km</td>
+<td class="py-2 px-4 text-on-surface-variant">26 AUG 2026 · 18:45</td>
+<td class="py-2 px-4"><span class="text-on-surface-variant font-body-sm text-body-sm uppercase tracking-wide text-[10px]">Reviewed</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- 4. SELECTED ALERT CONTEXT PANEL -->
+<div class="bg-surface border-t border-outline-variant shrink-0 p-4 z-20 flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Selected Alert Context</h3>
+<button class="bg-primary text-on-primary font-label-caps text-label-caps px-4 py-2 hover:bg-primary-fixed transition-colors uppercase tracking-wider font-bold rounded flex items-center gap-2">
+            VIEW INVESTIGATION <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+<div class="grid grid-cols-4 gap-6">
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Hotspot ID</span>
+<span class="font-data-lg text-data-lg text-error font-bold">H-8847</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Classification</span>
+<span class="font-data-md text-data-md text-on-surface">Industrial Fire</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Risk Score</span>
+<span class="font-data-md text-data-md text-error">94/100 - CRITICAL</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Confidence</span>
+<span class="font-data-md text-data-md text-on-surface">93%</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Persistence</span>
+<span class="font-data-md text-data-md text-on-surface">5 days</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Proximity</span>
+<span class="font-data-md text-data-md text-error">0.80 km to Ind. Infrastructure</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Detection Time</span>
+<span class="font-data-md text-data-md text-on-surface">27 AUG 2026 · 10:42</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Status</span>
+<span class="font-data-md text-data-md text-error uppercase">Needs Investigation</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant p-3 rounded-sm">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase block mb-1">Operational Explanation</span>
+<p class="font-body-sm text-body-sm text-on-surface">High thermal intensity, persistent detection and close proximity to industrial infrastructure.</p>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container border-t border-outline-variant flex justify-between items-center px-gutter py-2 w-full text-xs font-data-md text-data-md uppercase tracking-widest text-tertiary shrink-0 z-50">
+<span class="font-data-lg text-data-lg font-bold text-on-surface">
+            © 2026 GEOSPATIAL THERMAL INTELLIGENCE UNIT
+        </span>
+<div class="flex gap-4">
+<a class="text-on-surface-variant hover:bg-surface-bright transition-all duration-75 px-2 py-1" href="#">System Logs</a>
+<a class="text-on-surface-variant hover:bg-surface-bright transition-all duration-75 px-2 py-1" href="#">Data Policy</a>
+<a class="text-on-surface-variant hover:bg-surface-bright transition-all duration-75 px-2 py-1" href="#">API Status</a>
+</div>
+</footer>
+</body></html>
