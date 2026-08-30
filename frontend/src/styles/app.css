@@ -1,0 +1,342 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens for the Thermal Intelligence console.
+ *
+ * Source of truth: stitch/*\/DESIGN.md front-matter (identical across all five screens)
+ * plus the per-screen Tailwind configs in stitch/*\/code.html.
+ *
+ * Where the five Stitch screens disagreed, the following decisions were made:
+ *
+ *  - Corner radius: DESIGN.md and screen-2 mandate strictly 0px. Screens 1 and 3 set a
+ *    0.25rem default. We follow DESIGN.md: everything is square. Status LEDs are the
+ *    only exception and use an explicit rounded-full.
+ *
+ *  - Classification colours: three incompatible palettes existed across the screens.
+ *    We standardise on screen-3-analytics, the only palette that covers all six
+ *    classes with an explicit, self-consistent mapping.
+ *
+ *  - Sidebar width: DESIGN.md says 320px, screen-1 overrides to 280px. Both are kept.
+ */
+
+@theme {
+  /* ---------------------------------------------------------------- Fonts */
+  /* Inter for UI text. JetBrains Mono for every numeric / technical value. */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
+
+  /* ----------------------------------------------------------- Type scale */
+  --text-label: 11px;
+  --text-label--line-height: 14px;
+  --text-label--letter-spacing: 0.05em;
+  --text-label--font-weight: 700;
+
+  --text-body-sm: 12px;
+  --text-body-sm--line-height: 16px;
+  --text-body-sm--font-weight: 400;
+
+  --text-body: 14px;
+  --text-body--line-height: 20px;
+  --text-body--font-weight: 400;
+
+  --text-data: 13px;
+  --text-data--line-height: 18px;
+  --text-data--font-weight: 500;
+
+  --text-data-lg: 16px;
+  --text-data-lg--line-height: 20px;
+  --text-data-lg--font-weight: 500;
+
+  --text-headline: 18px;
+  --text-headline--line-height: 24px;
+  --text-headline--letter-spacing: -0.01em;
+  --text-headline--font-weight: 600;
+
+  /* ------------------------------------------------------------- Surfaces */
+  /* Tonal layering instead of shadows. Level 0 = map, Level 1 = panels. */
+  --color-background: #131315;
+  --color-surface: #131315;
+  --color-surface-lowest: #0e0e10;
+  --color-surface-low: #1b1b1d;
+  --color-surface-container: #1f1f21;
+  --color-surface-high: #2a2a2b;
+  --color-surface-highest: #353436;
+  --color-surface-bright: #39393b;
+  --color-input: #020617;
+
+  --color-on-surface: #e4e2e4;
+  --color-on-surface-variant: #c6c6cd;
+  --color-outline: #909097;
+  --color-outline-variant: #45464d;
+
+  /* ------------------------------------------------------------ Accents */
+  --color-primary: #bec6e0;
+  --color-on-primary: #283044;
+  --color-primary-container: #0f172a;
+  --color-on-primary-container: #798098;
+  --color-secondary: #b9c7e0;
+  --color-secondary-container: #3c4a5e;
+  --color-on-secondary-container: #abb9d2;
+  --color-tertiary: #dec29a;
+  --color-error: #ffb4ab;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+
+  /* ------------------------------------------------- Classification scale */
+  /* Six thermal classes. Keys mirror src/domain/classification.ts. */
+  --color-class-wildfire: #ef4444;
+  --color-class-agricultural: #f97316;
+  --color-class-industrial: #eab308;
+  --color-class-gas-flare: #a855f7;
+  --color-class-persistent: #3b82f6;
+  --color-class-unknown: #9ca3af;
+
+  /* ----------------------------------------------------------- Risk scale */
+  /* Emergency-management convention. Thresholds live in src/domain/risk.ts. */
+  --color-risk-critical: #ffb4ab;
+  --color-risk-high: #f59e0b;
+  --color-risk-medium: #bec6e0;
+  --color-risk-low: #909097;
+
+  /* ------------------------------------------------------- Status signals */
+  --color-status-online: #4ade80;
+  --color-status-offline: #ef4444;
+  --color-status-pending: #f59e0b;
+
+  /* -------------------------------------------------- Spacing (4px grid) */
+  --spacing-gutter: 12px;
+  --spacing-compact: 8px;
+  --spacing-toolbar: 48px;
+  --spacing-sidebar: 320px;
+  --spacing-sidebar-narrow: 280px;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    /* The console is a fixed-viewport operator surface, not a scrolling document. */
+    height: 100%;
+  }
+
+  body {
+    height: 100%;
+    margin: 0;
+    background-color: var(--color-background);
+    color: var(--color-on-surface);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  #root {
+    height: 100%;
+  }
+
+  /* Every container separation is a 1px line, never a shadow. */
+  *,
+  *::before,
+  *::after {
+    border-color: var(--color-outline-variant);
+  }
+
+  /* DESIGN.md: focus is a high-contrast 1px border, not a glow. */
+  :focus-visible {
+    outline: 1px solid var(--color-on-surface);
+    outline-offset: 1px;
+  }
+
+  /* Thin scrollbars keep dense panels readable. */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-surface-lowest);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-outline-variant);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-outline);
+  }
+
+  ::selection {
+    background: var(--color-secondary-container);
+    color: var(--color-on-surface);
+  }
+}
+
+@layer components {
+  /* Material Symbols Outlined, as used by all five Stitch screens. */
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined', sans-serif;
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings:
+      'FILL' 0,
+      'wght' 400,
+      'GRAD' 0,
+      'opsz' 20;
+  }
+
+  .material-symbols-outlined[data-filled='true'] {
+    font-variation-settings:
+      'FILL' 1,
+      'wght' 400,
+      'GRAD' 0,
+      'opsz' 20;
+  }
+
+  /* ------------------------------------------------------------------ Map */
+  /*
+   * Leaflet ships light-theme chrome. These overrides pull it into the console's
+   * dark, square-cornered language. Attribution stays legible — it is required
+   * by the OpenStreetMap and CARTO tile licences.
+   */
+  .leaflet-container {
+    background: var(--color-surface-lowest);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    /* The map is the primary surface; never let it show a focus ring itself. */
+    outline: none;
+  }
+
+  .leaflet-container a {
+    color: var(--color-primary);
+  }
+
+  .leaflet-control-attribution {
+    background: color-mix(in srgb, var(--color-surface-lowest) 85%, transparent) !important;
+    color: var(--color-outline) !important;
+    border-top: 1px solid var(--color-outline-variant);
+    border-left: 1px solid var(--color-outline-variant);
+    padding: 1px 6px !important;
+    font-size: 10px !important;
+  }
+
+  .leaflet-control-attribution a {
+    color: var(--color-on-surface-variant) !important;
+  }
+
+  .leaflet-control-scale-line {
+    background: color-mix(in srgb, var(--color-surface-lowest) 80%, transparent);
+    border-color: var(--color-outline-variant);
+    color: var(--color-on-surface-variant);
+    font-family: var(--font-mono);
+    font-size: 10px;
+  }
+
+  .leaflet-popup-content-wrapper,
+  .leaflet-popup-tip {
+    background: var(--color-surface-container);
+    color: var(--color-on-surface);
+    border: 1px solid var(--color-outline-variant);
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .leaflet-popup-content {
+    margin: 0;
+  }
+
+  .leaflet-tooltip {
+    background: var(--color-surface-lowest);
+    border: 1px solid var(--color-outline-variant);
+    border-radius: 0;
+    box-shadow: none;
+    color: var(--color-on-surface);
+    padding: 4px 6px;
+  }
+
+  .leaflet-tooltip::before {
+    display: none;
+  }
+
+  /* Hotspot markers: 8-10px squares, never rounded. */
+  .ti-marker-icon {
+    background: transparent;
+    border: 0;
+  }
+
+  .ti-marker {
+    display: block;
+    width: 10px;
+    height: 10px;
+  }
+
+  .ti-marker-selected {
+    position: relative;
+    display: flex;
+    width: 24px;
+    height: 24px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Crosshair brackets around the active marker. */
+  .ti-bracket {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border: 1px solid var(--color-on-surface);
+  }
+  .ti-bracket--tl {
+    top: 0;
+    left: 0;
+    border-right: 0;
+    border-bottom: 0;
+  }
+  .ti-bracket--tr {
+    top: 0;
+    right: 0;
+    border-left: 0;
+    border-bottom: 0;
+  }
+  .ti-bracket--bl {
+    bottom: 0;
+    left: 0;
+    border-right: 0;
+    border-top: 0;
+  }
+  .ti-bracket--br {
+    bottom: 0;
+    right: 0;
+    border-left: 0;
+    border-top: 0;
+  }
+
+  /* Keyboard focus on a marker must be visible against any basemap. */
+  .leaflet-marker-icon:focus-visible {
+    outline: 2px solid var(--color-on-surface);
+    outline-offset: 2px;
+  }
+
+  /* Faint technical grid, used as a page background on non-map screens. */
+  .surface-grid {
+    background-image:
+      linear-gradient(to right, color-mix(in srgb, var(--color-outline) 5%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in srgb, var(--color-outline) 5%, transparent) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
