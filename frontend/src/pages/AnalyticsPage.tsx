@@ -297,10 +297,10 @@ export function AnalyticsPage() {
               />
 
               <p className="mt-2 border-t border-outline-variant pt-2 text-[10px] leading-[13px] text-outline">
-                Derived from <span className="font-mono">persistence_7d</span>. The backend&apos;s own
-                persistence figures report every record as 7+ days because of the{' '}
-                <span className="font-mono">get_persistence()</span> defect, so they are not shown
-                here. See System Status.
+                Banded in the console from <span className="font-mono">persistence_7d</span>. Finer
+                than the backend&apos;s three buckets, whose &ldquo;3 Days&rdquo; label actually
+                spans 3-6 days. Filtering is served by{' '}
+                <span className="font-mono">?min_persistence=</span>.
               </p>
             </Panel>
 

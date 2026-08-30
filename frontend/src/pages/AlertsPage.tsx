@@ -334,9 +334,8 @@ export function AlertsPage() {
               value={formatPercent(selected.alert.confidence)}
             />
             <Metric
-              hint="Derived from the hotspot record"
               label="Persistence"
-              provenance="DERIVED"
+              provenance="API"
               value={formatDays(selected.persistenceDays)}
             />
             <Metric
@@ -455,7 +454,6 @@ function AlertRow({
         {formatCoordinates(entry.alert.location.lat, entry.alert.location.lon, 3)}
       </td>
 
-      {/* Derived value: the alert payload's own persistence field is unreliable. */}
       <td
         className="px-gutter py-1.5 text-right font-mono text-data"
         style={{
@@ -464,7 +462,7 @@ function AlertRow({
               ? 'var(--color-class-persistent)'
               : 'var(--color-on-surface-variant)',
         }}
-        title="Derived from the hotspot record. The alert payload's persistence_days field reports 7 for every record."
+        title="Days on which the source was detected, from the alert payload."
       >
         {entry.persistenceDays !== null ? `${entry.persistenceDays} d` : '—'}
       </td>

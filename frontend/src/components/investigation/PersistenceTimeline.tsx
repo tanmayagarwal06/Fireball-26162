@@ -38,10 +38,10 @@ export function PersistenceTimeline({ hotspot }: { hotspot: Hotspot }) {
         </h3>
 
         <span
-          className="border px-1 text-[9px] font-bold uppercase leading-[14px] tracking-[0.06em] border-outline-variant text-outline"
-          title="Derived from persistence_7d in the frontend. The backend's own persistence helper is defective."
+          className="border px-1 text-[9px] font-bold uppercase leading-[14px] tracking-[0.06em] border-outline-variant text-on-surface-variant"
+          title="Day count read from persistence_7d. The nodes are a console visualisation of that count, not per-day records."
         >
-          Derived
+          API
         </span>
 
         <span className="ml-auto font-mono text-data text-on-surface">

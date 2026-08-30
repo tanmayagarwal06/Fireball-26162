@@ -56,8 +56,8 @@ export interface Hotspot {
    * These are day counts, not booleans: a record with `persistence_7d: 1` was
    * seen on one day out of seven.
    *
-   * Do not read these directly — use `resolvePersistenceDays()` from
-   * src/domain/persistence.ts, which documents why.
+   * Prefer `resolvePersistenceDays()` from src/domain/persistence.ts over reading
+   * these directly, so the window-preference rule stays in one place.
    */
   persistence_1d: number | null;
   persistence_3d: number | null;
@@ -126,16 +126,13 @@ export type HotspotQuery = {
   /** Exact, case-insensitive match on the full `satellite` identifier. */
   satellite?: string;
   /**
-   * Inclusive lower bound on persistence in days.
+   * Inclusive lower bound on persistence in days, compared against the number of
+   * days the source was actually detected.
    *
-   * KNOWN BACKEND DEFECT: `get_persistence()` in backend/app.py tests
-   * `if hotspot.get("persistence_7d")`, a truthiness check on an integer day
-   * count. Every record in mock/hotspots.json has a non-zero `persistence_7d`,
-   * so the helper returns 7 for all of them and this filter is a no-op —
-   * `?min_persistence=7` returns all 11 records. Verified against the live API.
-   *
-   * Until backend/app.py is fixed, persistence filtering is applied on the
-   * client from `resolvePersistenceDays()`. See src/domain/persistence.ts.
+   * This parameter was previously a no-op: `get_persistence()` returned the
+   * look-back window length rather than the day count, so it matched every
+   * record. Fixed in backend/app.py and verified against the live API —
+   * ?min_persistence= now returns 11 / 9 / 5 / 2 for thresholds 1 / 2 / 4 / 7.
    */
   min_persistence?: number;
   /** Inclusive upper bound on `distance_to_industry_km`; drops null distances. */

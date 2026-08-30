@@ -183,10 +183,10 @@ function assessTemporal(hotspot: Hotspot): EvidenceAssessment {
     title: 'Temporal evidence',
     icon: 'schedule',
     strength,
-    // Derived because the backend's own persistence helper is defective.
-    provenance: 'DERIVED',
+    // The day count is an API field; only the strength banding is derived.
+    provenance: 'API',
     interpretation,
-    strengthBasis: `Strong at ${PERSISTENCE_THRESHOLD_DAYS}+ days, moderate at 3-6 days, weak below 3. Derived from persistence_7d because the backend helper is defective.`,
+    strengthBasis: `Strong at ${PERSISTENCE_THRESHOLD_DAYS}+ days, moderate at 3-6 days, weak below 3. Day count read from persistence_7d; the banding is a console heuristic.`,
     measurements: [
       { label: 'Days detected', value: days !== null ? String(days) : '—', emphasis: true },
       { label: '7-day window', value: hotspot.persistence_7d?.toString() ?? '—' },

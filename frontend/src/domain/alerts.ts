@@ -13,9 +13,11 @@
  *    has no notion of Critical.
  *  - Event age, because the response carries a detection timestamp but no age.
  *
- * The backend's `persistence_days` field is deliberately ignored: it is produced
- * by the defective `get_persistence()` helper and reads 7 for every record. The
- * screen joins each alert back to its hotspot and derives persistence instead.
+ * Each alert is also joined back to its hotspot record, because the alert payload
+ * omits land cover, facility type and the industrial-polygon flag. The join used
+ * to be the only trustworthy source of persistence too, since `get_persistence()`
+ * reported 7 for every record; that is fixed, so `persistence_days` is now taken
+ * from the response and the join is only a fallback.
  */
 import { resolveRiskLevel, type RiskLevelDefinition } from './risk';
 import { resolvePersistenceDays } from './persistence';
@@ -156,8 +158,8 @@ export function formatAge(ageHours: number | null): string {
 /**
  * An alert joined to its source hotspot.
  *
- * The join supplies the fields the alert payload lacks or misreports: correct
- * persistence, land cover, facility type and the industrial-polygon flag.
+ * The join supplies the fields the alert payload omits: land cover, facility type
+ * and the industrial-polygon flag.
  */
 export interface EnrichedAlert {
   alert: Alert;
@@ -166,7 +168,7 @@ export interface EnrichedAlert {
   severity: RiskLevelDefinition;
   status: AlertStatusMeta;
   ageHours: number | null;
-  /** Derived from the hotspot record, not the alert's own field. */
+  /** From the alert payload, falling back to the hotspot record. */
   persistenceDays: number | null;
   insideIndustrialPolygon: boolean | null;
   landCover: string | null;
@@ -189,7 +191,14 @@ export function enrichAlerts(
       severity: alertSeverity(alert),
       status: statusMeta(alert.status),
       ageHours: detectionAgeHours(alert.detection_date, alert.detection_time, now),
-      persistenceDays: hotspot ? resolvePersistenceDays(hotspot) : null,
+      // Prefer the payload; fall back to the record when the alert omits it or
+      // the hotspot list is the only thing loaded.
+      persistenceDays:
+        typeof alert.persistence_days === 'number'
+          ? alert.persistence_days
+          : hotspot
+            ? resolvePersistenceDays(hotspot)
+            : null,
       insideIndustrialPolygon: hotspot ? hotspot.inside_industrial_polygon : null,
       landCover: hotspot?.land_cover_class ?? null,
       facilityType: hotspot?.nearest_facility_type ?? null,

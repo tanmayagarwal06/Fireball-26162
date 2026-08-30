@@ -116,22 +116,39 @@ def confidence_as_percent(value):
 
 def get_persistence(hotspot):
     """
-    Determine the persistence duration represented by the data.
+    Number of days on which this thermal source was actually detected.
 
-    We use persistence_7d first, then persistence_3d,
-    then persistence_1d.
+    persistence_7d / persistence_3d / persistence_1d are day COUNTS within each
+    look-back window, not flags. A record with persistence_7d = 1 was seen on
+    one day out of seven.
+
+    The previous implementation tested these fields for truthiness and returned
+    the window length instead of the count:
+
+        if hotspot.get("persistence_7d"):
+            return 7
+
+    Because every record carries a non-zero persistence_7d, that returned 7 for
+    all of them. It made /statistics report every hotspot as 7+ day persistent
+    and turned ?min_persistence= into a no-op that matched the whole dataset.
+
+    The widest window carries the most complete count, so it is preferred, with
+    the narrower windows as fallbacks. Returns 0 when no count is recorded,
+    which keeps every numeric comparison below working without a None guard.
     """
 
-    if hotspot.get("persistence_7d"):
-        return 7
+    for field in ("persistence_7d", "persistence_3d", "persistence_1d"):
+        value = hotspot.get(field)
 
-    if hotspot.get("persistence_3d"):
-        return 3
+        # Reject booleans explicitly: bool is a subclass of int in Python, so a
+        # True would otherwise be silently counted as 1 day.
+        if isinstance(value, bool):
+            continue
 
-    if hotspot.get("persistence_1d"):
-        return 1
+        if isinstance(value, (int, float)):
+            return int(value)
 
-    return 1
+    return 0
 
 
 def get_alert_status(hotspot):

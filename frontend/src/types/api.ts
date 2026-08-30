@@ -30,11 +30,7 @@ export interface StatisticsResponse {
     total_detections: number;
     /** risk_score >= 80. */
     high_risk: number;
-    /**
-     * Intended as "persistence >= 7 days", but affected by the
-     * `get_persistence()` defect documented in types/hotspot.ts — currently
-     * equals total_detections. Do not surface without qualification.
-     */
+    /** Detected on 7 or more days. Reliable since the get_persistence() fix. */
     persistent_sources: number;
     /** `inside_industrial_polygon === true`. */
     industrial_linked: number;
@@ -46,7 +42,13 @@ export interface StatisticsResponse {
   /** Three buckets: High (>=80), Medium (>=50), Low (<50). */
   risk_distribution: Record<string, number>;
 
-  /** Buckets "1 Day" / "3 Days" / "7+ Days". Affected by the same defect. */
+  /**
+   * Buckets "1 Day" / "3 Days" / "7+ Days".
+   *
+   * Note the labels are looser than the boundaries: the backend assigns
+   * >= 7 to "7+ Days", >= 3 to "3 Days" and everything else to "1 Day", so
+   * "3 Days" actually spans 3-6 days and "1 Day" spans 0-2.
+   */
   persistence_distribution: Record<string, number>;
 
   /** Buckets "Within 500m" / "500m-2km" / ">2km". Null distances are skipped. */
@@ -73,7 +75,7 @@ export interface Alert {
     lat: number;
     lon: number;
   };
-  /** From `get_persistence()`; see the defect note in types/hotspot.ts. */
+  /** Days on which the source was detected. Reliable since the backend fix. */
   persistence_days: number;
   industrial_distance_km: number | null;
   detection_date: string;

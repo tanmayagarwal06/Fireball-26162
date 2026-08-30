@@ -1,34 +1,17 @@
 /**
  * Temporal persistence.
  *
- * ---------------------------------------------------------------------------
- * WHY THIS MODULE EXISTS
- * ---------------------------------------------------------------------------
- * `get_persistence()` in backend/app.py is defective:
+ * Reads the number of days a source was detected from the raw hotspot record and
+ * bands it for display. `backend/app.py`'s `get_persistence()` now applies the
+ * same rule, so the two agree — this module exists to band and format the value
+ * for the UI, and to resolve it for records the console holds locally without
+ * re-querying the API.
  *
- *     if hotspot.get("persistence_7d"): return 7
- *     if hotspot.get("persistence_3d"): return 3
- *     ...
- *
- * `persistence_7d` is an integer day count, not a boolean. Every record in
- * mock/hotspots.json has a non-zero value, so the helper returns 7 for all of
- * them. Verified against the running server:
- *
- *   GET /statistics -> persistence_distribution {"1 Day":0,"3 Days":0,"7+ Days":11}
- *                   -> summary.persistent_sources = 11
- *   GET /hotspots?min_persistence=7 -> count 11  (should be 2)
- *
- * The true `persistence_7d` values across the dataset are
- * 7, 1, 5, 2, 3, 6, 2, 4, 1, 2, 7 — so only H001 and H011 are genuinely
- * 7-day persistent.
- *
- * Per the project constraints the backend is not being modified, so persistence
- * is resolved and filtered on the client. When `get_persistence()` is fixed,
- * `filterByPersistence()` can be deleted and `min_persistence` passed straight
- * through to the API instead.
- *
- * Anything rendered from this module is DERIVED data, not raw API data, and
- * should be labelled as such via `Provenance.DERIVED`.
+ * Historical note: this module previously carried a client-side filtering
+ * workaround, because `get_persistence()` tested its integer day-count fields
+ * for truthiness and returned the look-back window length instead of the count.
+ * That returned 7 for every record. The backend is fixed and the workaround has
+ * been removed; persistence filtering is now served by `?min_persistence=`.
  */
 import type { Hotspot } from '../types/hotspot';
 
@@ -40,7 +23,9 @@ export const PERSISTENCE_THRESHOLD_DAYS = 7;
  *
  * `persistence_7d` is the widest look-back window and therefore the most
  * complete count, so it is preferred; the narrower windows are fallbacks for
- * records that lack it.
+ * records that lack it. Mirrors `get_persistence()` in backend/app.py, except
+ * that a total absence of data yields null here rather than the backend's 0, so
+ * the UI can distinguish "not recorded" from "zero days".
  */
 export function resolvePersistenceDays(hotspot: Hotspot): number | null {
   const candidates = [hotspot.persistence_7d, hotspot.persistence_3d, hotspot.persistence_1d];
@@ -89,18 +74,4 @@ export function resolvePersistenceBand(hotspot: Hotspot): PersistenceBand | null
   const days = resolvePersistenceDays(hotspot);
   if (days === null) return null;
   return PERSISTENCE_BAND_LIST.find((band) => days >= band.minDays) ?? PERSISTENCE_BANDS.SINGLE_DAY;
-}
-
-/**
- * Client-side replacement for the broken `min_persistence` query parameter.
- * Records with no persistence data at all are excluded, matching how the backend
- * drops null distances in its own proximity filter.
- */
-export function filterByPersistence(hotspots: Hotspot[], minDays: number | undefined): Hotspot[] {
-  if (minDays === undefined || minDays <= 0) return hotspots;
-
-  return hotspots.filter((hotspot) => {
-    const days = resolvePersistenceDays(hotspot);
-    return days !== null && days >= minDays;
-  });
 }

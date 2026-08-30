@@ -6,22 +6,22 @@
  * ---------------------------------------------------------------------------
  * SERVER-SIDE VS CLIENT-SIDE
  * ---------------------------------------------------------------------------
- * Filters are pushed to the backend wherever the backend genuinely supports
- * them. Two exceptions are applied on the client, both for documented reasons:
+ * Every filter is pushed to the backend except one:
  *
- *  1. Persistence. The `min_persistence` query parameter is a no-op because of
- *     the `get_persistence()` defect described in src/domain/persistence.ts.
+ *  - Multi-class selection. The backend's `classification` parameter takes a
+ *    single exact-match value. The Stitch design uses a checkbox list, so when
+ *    exactly one class is selected we push it to the API, and when several are
+ *    selected we fetch unfiltered and narrow on the client. `filterPlacement()`
+ *    reports which of the two is in effect so the UI can label it.
  *
- *  2. Multi-class selection. The backend's `classification` parameter takes a
- *     single exact-match value. The Stitch design uses a checkbox list, so when
- *     exactly one class is selected we push it to the API, and when several are
- *     selected we fetch unfiltered and narrow on the client. `filterPlacement()`
- *     reports which of the two is in effect so the UI can label it.
- *
- * Every other filter maps one-to-one onto a real backend parameter.
+ * Persistence used to be a second exception: `min_persistence` was a no-op
+ * because `get_persistence()` in backend/app.py tested its integer day-count
+ * fields for truthiness and returned the window length. That is now fixed, so
+ * persistence filtering is served by the API like everything else and the
+ * client-side workaround has been removed.
  */
 import { CLASSIFICATION_KEYS, parseClassification, type ClassificationKey } from './classification';
-import { filterByPersistence, resolvePersistenceDays } from './persistence';
+import { resolvePersistenceDays } from './persistence';
 import type { Hotspot, HotspotQuery } from '../types/hotspot';
 
 export interface FilterState {
@@ -96,8 +96,7 @@ export function filterPlacement(filters: FilterState, key: keyof FilterState): F
       return filters.classifications.length === 1 ? 'server' : 'client';
 
     case 'minPersistence':
-      // Always client-side until get_persistence() is fixed in app.py.
-      return filters.minPersistence === null ? 'inactive' : 'client';
+      return filters.minPersistence === null ? 'inactive' : 'server';
 
     case 'minRisk':
       return filters.minRisk === null ? 'inactive' : 'server';
@@ -120,9 +119,9 @@ export function filterPlacement(filters: FilterState, key: keyof FilterState): F
 /**
  * Build the query string parameters for `GET /hotspots`.
  *
- * Only parameters the backend implements and can honour are included:
- * `min_persistence` is intentionally omitted, and `classification` is only sent
- * when a single class is selected.
+ * Only parameters the backend implements and can honour are included.
+ * `classification` is sent only when a single class is selected, because the
+ * backend accepts one value.
  */
 export function toHotspotQuery(filters: FilterState): HotspotQuery {
   const query: HotspotQuery = {};
@@ -134,6 +133,7 @@ export function toHotspotQuery(filters: FilterState): HotspotQuery {
   }
 
   if (filters.minRisk !== null) query.min_risk = filters.minRisk;
+  if (filters.minPersistence !== null) query.min_persistence = filters.minPersistence;
   if (filters.satellite !== null) query.satellite = filters.satellite;
   if (filters.maxIndustrialDistance !== null) {
     query.max_industrial_distance = filters.maxIndustrialDistance;
@@ -146,24 +146,16 @@ export function toHotspotQuery(filters: FilterState): HotspotQuery {
 }
 
 /**
- * Apply the filters the backend could not.
+ * Apply the one filter the backend cannot: a multi-class selection.
  *
  * Runs after the API response. When a single class is selected the backend has
  * already filtered it, so re-applying here is a harmless no-op.
  */
 export function applyClientFilters(hotspots: Hotspot[], filters: FilterState): Hotspot[] {
-  let result = hotspots;
+  if (!isClassificationNarrowing(filters)) return hotspots;
 
-  if (isClassificationNarrowing(filters)) {
-    const allowed = new Set(filters.classifications);
-    result = result.filter((hotspot) => allowed.has(parseClassification(hotspot.classification)));
-  }
-
-  if (filters.minPersistence !== null) {
-    result = filterByPersistence(result, filters.minPersistence);
-  }
-
-  return result;
+  const allowed = new Set(filters.classifications);
+  return hotspots.filter((hotspot) => allowed.has(parseClassification(hotspot.classification)));
 }
 
 /** Imported lazily to keep this module free of the definitions table. */

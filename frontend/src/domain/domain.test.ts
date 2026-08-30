@@ -27,7 +27,6 @@ import {
 } from './risk';
 import {
   PERSISTENCE_THRESHOLD_DAYS,
-  filterByPersistence,
   isPersistent,
   resolvePersistenceBand,
   resolvePersistenceDays,
@@ -174,14 +173,24 @@ describe('risk banding', () => {
 
 /* -------------------------------------------------------------------------- */
 
-describe('persistence (backend defect workaround)', () => {
-  it('reads the real day count instead of the backend truthiness result', () => {
-    // The backend returns 7 for H002 because persistence_7d is a truthy 1.
-    // This is the assertion that guards the entire workaround.
+describe('persistence', () => {
+  it('reads the real day count, not the look-back window length', () => {
+    // Regression guard for the get_persistence() defect, which returned 7 for
+    // H002 because persistence_7d is a truthy 1. Both backend and frontend must
+    // report the count; if either regresses, this fails.
     expect(resolvePersistenceDays(H002)).toBe(1);
     expect(resolvePersistenceDays(H001)).toBe(7);
     expect(resolvePersistenceDays(H003)).toBe(5);
     expect(resolvePersistenceDays(H004)).toBe(2);
+  });
+
+  it('applies the persistence threshold at exactly the documented boundary', () => {
+    // Guards against the threshold constant and the predicate drifting apart.
+    const atThreshold = { ...H002, persistence_7d: PERSISTENCE_THRESHOLD_DAYS };
+    const belowThreshold = { ...H002, persistence_7d: PERSISTENCE_THRESHOLD_DAYS - 1 };
+
+    expect(isPersistent(atThreshold)).toBe(true);
+    expect(isPersistent(belowThreshold)).toBe(false);
   });
 
   it('identifies only genuinely persistent sources', () => {
@@ -212,22 +221,6 @@ describe('persistence (backend defect workaround)', () => {
     expect(resolvePersistenceBand(H003)?.key).toBe('EXTENDED');
     expect(resolvePersistenceBand(H004)?.key).toBe('SHORT');
     expect(resolvePersistenceBand(H002)?.key).toBe('SINGLE_DAY');
-  });
-
-  it('filters by minimum days, excluding records with no data', () => {
-    expect(filterByPersistence(SAMPLE, PERSISTENCE_THRESHOLD_DAYS).map((h) => h.id)).toEqual([
-      'H001',
-      'H011',
-    ]);
-    expect(filterByPersistence(SAMPLE, 4).map((h) => h.id)).toEqual([
-      'H001',
-      'H003',
-      'H008',
-      'H011',
-    ]);
-    // No threshold is a pass-through, not an empty result.
-    expect(filterByPersistence(SAMPLE, undefined)).toHaveLength(SAMPLE.length);
-    expect(filterByPersistence(SAMPLE, 0)).toHaveLength(SAMPLE.length);
   });
 });
 
@@ -265,11 +258,18 @@ describe('filters', () => {
     expect(applyClientFilters(SAMPLE, filters)).toHaveLength(SAMPLE.length);
   });
 
-  it('never sends min_persistence, because the backend parameter is broken', () => {
+  it('sends min_persistence to the backend now that the parameter works', () => {
     const filters: FilterState = { ...DEFAULT_FILTERS, minPersistence: 7 };
 
-    expect(toHotspotQuery(filters)).not.toHaveProperty('min_persistence');
-    expect(filterPlacement(filters, 'minPersistence')).toBe('client');
+    expect(toHotspotQuery(filters).min_persistence).toBe(7);
+    expect(filterPlacement(filters, 'minPersistence')).toBe('server');
+  });
+
+  it('leaves persistence narrowing to the backend, not applyClientFilters', () => {
+    // The only client-side filter left is a multi-class selection.
+    const filters: FilterState = { ...DEFAULT_FILTERS, minPersistence: 7 };
+
+    expect(applyClientFilters(SAMPLE, filters)).toHaveLength(SAMPLE.length);
   });
 
   it('maps the remaining filters onto real backend parameter names', () => {
@@ -277,7 +277,7 @@ describe('filters', () => {
       classifications: [],
       minRisk: 80,
       satellite: 'MODIS_NRT',
-      minPersistence: null,
+      minPersistence: 4,
       maxIndustrialDistance: 2,
       landCover: 'Forest',
       dateFrom: '2026-08-01',
@@ -286,13 +286,14 @@ describe('filters', () => {
 
     expect(toHotspotQuery(filters)).toEqual({
       min_risk: 80,
+      min_persistence: 4,
       satellite: 'MODIS_NRT',
       max_industrial_distance: 2,
       land_cover: 'Forest',
       date_from: '2026-08-01',
       date_to: '2026-08-31',
     });
-    expect(countActiveFilters(filters)).toBe(6);
+    expect(countActiveFilters(filters)).toBe(7);
   });
 
   it('applies multi-class narrowing on the client', () => {
@@ -302,16 +303,6 @@ describe('filters', () => {
     };
 
     expect(applyClientFilters(SAMPLE, filters).map((h) => h.id)).toEqual(['H004', 'H005']);
-  });
-
-  it('combines client-side class and persistence filters', () => {
-    const filters: FilterState = {
-      ...DEFAULT_FILTERS,
-      classifications: ['GAS_FLARE', 'PERSISTENT_THERMAL_SOURCE'],
-      minPersistence: 7,
-    };
-
-    expect(applyClientFilters(SAMPLE, filters).map((h) => h.id)).toEqual(['H001', 'H011']);
   });
 
   it('sorts without mutating the input array', () => {
@@ -502,14 +493,13 @@ describe('evidence assessment', () => {
 /* -------------------------------------------------------------------------- */
 
 describe('alerts', () => {
-  const alertFor = (hotspot: typeof H001, status: string): Alert => ({
+  const alertFor = (hotspot: typeof H001, status: string, persistenceDays: number): Alert => ({
     hotspot_id: hotspot.id,
     classification: hotspot.classification,
     risk_score: hotspot.risk_score,
     confidence: 91,
     location: { lat: hotspot.lat, lon: hotspot.lon },
-    // The backend reports 7 for every record; enrichment must ignore this.
-    persistence_days: 7,
+    persistence_days: persistenceDays,
     industrial_distance_km: hotspot.distance_to_industry_km,
     detection_date: hotspot.acq_date,
     detection_time: hotspot.acq_time,
@@ -526,20 +516,28 @@ describe('alerts', () => {
     expect(statusMeta('ESCALATED').label).toBe('ESCALATED');
   });
 
-  it('overrides the unreliable persistence field using the hotspot record', () => {
-    const enriched = enrichAlerts([alertFor(H002, 'REVIEWED')], [H002]);
+  it('takes persistence from the payload now that the backend reports it correctly', () => {
+    const enriched = enrichAlerts([alertFor(H002, 'REVIEWED', 1)], [H002]);
 
-    // The alert said 7; the truth is 1.
-    expect(enriched[0].alert.persistence_days).toBe(7);
+    expect(enriched[0].persistenceDays).toBe(1);
+  });
+
+  it('falls back to the hotspot record when the payload omits persistence', () => {
+    const alert = { ...alertFor(H002, 'REVIEWED', 1), persistence_days: undefined } as never;
+    const enriched = enrichAlerts([alert], [H002]);
+
     expect(enriched[0].persistenceDays).toBe(1);
   });
 
   it('tolerates an alert whose hotspot is not loaded', () => {
-    const enriched = enrichAlerts([alertFor(H001, 'NEW')], []);
+    const enriched = enrichAlerts([alertFor(H001, 'NEW', 7)], []);
 
     expect(enriched[0].hotspot).toBeNull();
-    expect(enriched[0].persistenceDays).toBeNull();
+    // Persistence still resolves, because it comes from the payload.
+    expect(enriched[0].persistenceDays).toBe(7);
+    // These genuinely require the join and stay null.
     expect(enriched[0].insideIndustrialPolygon).toBeNull();
+    expect(enriched[0].landCover).toBeNull();
   });
 
   it('computes detection age from the timestamp', () => {
@@ -566,14 +564,13 @@ describe('alerts', () => {
     expect(formatAge(null)).toBe('—');
   });
 
-  it('sorts by derived persistence, not the alert payload field', () => {
+  it('sorts by persistence descending', () => {
     const alerts = enrichAlerts(
-      [alertFor(H002, 'REVIEWED'), alertFor(H001, 'NEW')],
+      [alertFor(H002, 'REVIEWED', 1), alertFor(H001, 'NEW', 7)],
       [H001, H002],
     );
     const sorted = sortAlerts(alerts, 'persistence-desc');
 
-    // If the payload's uniform 7 were used, this order would be arbitrary.
     expect(sorted.map((entry) => entry.alert.hotspot_id)).toEqual(['H001', 'H002']);
   });
 });

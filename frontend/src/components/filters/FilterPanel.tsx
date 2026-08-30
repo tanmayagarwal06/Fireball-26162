@@ -143,7 +143,7 @@ export function FilterPanel({ resultCount, totalCount, isFetching }: FilterPanel
         <FilterSection
           icon="schedule"
           placement={filterPlacement(filters, 'minPersistence')}
-          placementNote="Applied in the browser: the backend's min_persistence parameter is affected by the get_persistence() defect and matches every record. See System Status."
+          placementNote="Sent to the backend as ?min_persistence= in days"
           title="Temporal persistence"
         >
           <Select

@@ -48,12 +48,12 @@ const ENDPOINTS: Array<{ method: string; path: string; purpose: string }> = [
  * Constraints that shape what the rest of the console is allowed to display.
  * Each one was confirmed against the running backend.
  */
-const LIMITATIONS: Array<{ title: string; detail: string; severity: 'defect' | 'note' }> = [
+const LIMITATIONS: Array<{ title: string; detail: string; severity: 'defect' | 'note' | 'fixed' }> = [
   {
-    severity: 'defect',
-    title: 'Backend persistence calculation is incorrect',
+    severity: 'fixed',
+    title: 'Backend persistence calculation — resolved',
     detail:
-      'get_persistence() in backend/app.py applies a truthiness test to persistence_7d, which is an integer day count. Every record has a non-zero value, so the helper returns 7 for all of them. /statistics reports every hotspot as 7+ day persistent and ?min_persistence=7 returns the full dataset. The frontend derives persistence from persistence_7d instead and filters client-side. One-line fix needed in app.py.',
+      'get_persistence() in backend/app.py previously applied a truthiness test to persistence_7d, an integer day count, and returned the look-back window length instead. Every record has a non-zero value, so it returned 7 for all of them: /statistics reported all 11 hotspots as 7+ day persistent and ?min_persistence= matched the whole dataset. It now returns the real count. Verified: persistent_sources is 2 (H001 and H011), the distribution is 5 / 4 / 2, and ?min_persistence= returns 11 / 9 / 5 / 2 for thresholds 1 / 2 / 4 / 7. The client-side workaround has been removed and persistence filtering is served by the API.',
   },
   {
     severity: 'note',
@@ -260,24 +260,14 @@ function Baseline({ data }: { data: StatisticsResponse }) {
           size="lg"
           value={formatCount(data.summary.industrial_linked)}
         />
-        {/* Reported as-is but explicitly flagged, because the backend value is wrong. */}
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <div className="flex items-center gap-1.5">
-            <span className="truncate text-label uppercase text-on-surface-variant">
-              Persistent sources
-            </span>
-            <span
-              className="shrink-0 border border-error/40 px-1 text-[9px] font-bold uppercase leading-[14px] tracking-[0.06em] text-error"
-              title={`The backend reports every record as ${PERSISTENCE_THRESHOLD_DAYS}+ day persistent because of the get_persistence() defect. Do not rely on this figure.`}
-            >
-              Unreliable
-            </span>
-          </div>
-          <span className="font-mono text-data-lg text-outline line-through">
-            {formatCount(data.summary.persistent_sources)}
-          </span>
-          <span className="text-body-sm text-on-surface-variant">See known limitations</span>
-        </div>
+        <Metric
+          hint={`Detected on ${PERSISTENCE_THRESHOLD_DAYS}+ days`}
+          label="Persistent sources"
+          provenance="API"
+          size="lg"
+          value={formatCount(data.summary.persistent_sources)}
+          valueColor="var(--color-class-persistent)"
+        />
       </div>
 
       <div className="flex flex-col gap-2 border-t border-outline-variant pt-gutter">
@@ -346,8 +336,20 @@ function LimitationsPanel() {
         {LIMITATIONS.map((limitation) => (
           <li className="flex gap-gutter py-2 first:pt-0 last:pb-0" key={limitation.title}>
             <Icon
-              className={limitation.severity === 'defect' ? 'text-error' : 'text-tertiary'}
-              name={limitation.severity === 'defect' ? 'bug_report' : 'info'}
+              className={
+                limitation.severity === 'defect'
+                  ? 'text-error'
+                  : limitation.severity === 'fixed'
+                    ? 'text-[var(--color-status-online)]'
+                    : 'text-tertiary'
+              }
+              name={
+                limitation.severity === 'defect'
+                  ? 'bug_report'
+                  : limitation.severity === 'fixed'
+                    ? 'check_circle'
+                    : 'info'
+              }
               size={16}
             />
             <div className="flex min-w-0 flex-col gap-0.5">
