@@ -53,3 +53,16 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
+# ================================
+# ML / geospatial pipeline (src/, data/)
+# ================================
+
+# raw FIRMS archives (hundreds of MB) - see data/raw/README.txt
+data/raw/*.csv
+data/raw/**/*.csv
+# generated database (several GB) - regenerate with: python src/run_pipeline.py
+data/hotspots.db
+data/hotspots.db.tmp
+*.db-journal
+# optional ESA WorldCover tiles
+data/cache/worldcover/*.tif
