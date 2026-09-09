@@ -1,6 +1,6 @@
 {
-  "run_id": "run_20260904T134305Z",
-  "run_utc": "2026-09-04T13:43:05Z",
+  "run_id": "run_20260909T162347Z",
+  "run_utc": "2026-09-09T16:23:47Z",
   "rows_processed": 5966590,
   "input": {
     "file_count": 10,
@@ -149,39 +149,67 @@
     "singletons": 2037866,
     "outbreak_fronts": 122378,
     "persistent_clusters": 33417,
-    "seconds": 36.1
+    "seconds": 44.1
   },
   "geojson_days": 7,
+  "console": {
+    "max_records": 3000,
+    "min_per_class": 40,
+    "candidates_in_window": 14351,
+    "records": 3000,
+    "class_distribution": {
+      "Wildfire": 1160,
+      "Agricultural Burning": 490,
+      "Industrial Fire": 3,
+      "Gas Flare": 134,
+      "Persistent Thermal Source": 1173,
+      "Unknown": 40
+    }
+  },
   "outputs": {
     "sqlite": {
       "path": "D:\\sih\\data\\hotspots.db",
       "rows": 5966590,
       "clusters": 485341,
       "size_mb": 3523.4,
-      "seconds": 223.7
+      "seconds": 290.4
     },
     "geojson": {
       "path": "D:\\sih\\data\\latest_hotspots.geojson",
       "features": 14351,
       "clusters": 1218,
       "size_mb": 13.37,
-      "seconds": 1.7
+      "seconds": 13.8
     },
     "clusters_geojson": {
       "path": "D:\\sih\\data\\latest_clusters.geojson",
       "features": 1218,
       "size_mb": 0.74,
-      "seconds": 0.3
+      "seconds": 0.4
+    },
+    "console_json": {
+      "path": "D:\\sih\\data\\hotspots.json",
+      "records": 3000,
+      "size_mb": 3.09,
+      "class_distribution": {
+        "Wildfire": 1160,
+        "Agricultural Burning": 490,
+        "Industrial Fire": 3,
+        "Gas Flare": 134,
+        "Persistent Thermal Source": 1173,
+        "Unknown": 40
+      },
+      "seconds": 0.2
     },
     "model": "D:\\sih\\data\\models\\fire_classifier.pkl",
     "summary_json": "D:\\sih\\data\\pipeline_summary.json"
   },
   "timings": {
-    "clean": 23.3,
-    "features": 43.7,
-    "classify": 77.5,
-    "cluster": 36.2,
-    "export": 226.8,
-    "total": 407.5
+    "clean": 39.4,
+    "features": 68.4,
+    "classify": 92.3,
+    "cluster": 44.2,
+    "export": 306.6,
+    "total": 550.9
   }
 }
