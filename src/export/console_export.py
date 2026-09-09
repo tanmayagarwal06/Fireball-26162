@@ -82,7 +82,7 @@ CONSOLE_FIELDS: tuple[str, ...] = (
     "confidence", "day_night", "persistence_1d", "persistence_3d", "persistence_7d",
     "distance_to_industry_km", "inside_industrial_polygon", "nearest_facility_type",
     "land_cover_class", "hotspot_density", "classification", "classification_confidence",
-    "risk_score", "evidence",
+    "class_probabilities", "risk_score", "evidence",
 )
 
 # --------------------------------------------------------------------------- #
@@ -381,13 +381,22 @@ def build_console_records(df: pd.DataFrame) -> list[dict]:
         "prob_class_0", "prob_class_1", "prob_class_2", "prob_class_3", "prob_class_4") if c in df.columns]
     src_rows = df[evidence_source_cols].to_dict(orient="records")
 
+    prob_cols = [f"prob_class_{i}" for i in range(5)]
+    has_probs = all(c in df.columns for c in prob_cols)
+    probs = df[prob_cols].astype(float).round(4).to_numpy() if has_probs else None
+
     records: list[dict] = []
-    for base_row, src in zip(base.to_dict(orient="records"), src_rows):
+    for i, (base_row, src) in enumerate(zip(base.to_dict(orient="records"), src_rows)):
         rec = {k: json_safe(v) for k, v in base_row.items()}
         rec["inside_industrial_polygon"] = bool(base_row["inside_industrial_polygon"])
         rec["risk_score"] = int(base_row["risk_score"])
         for k in ("confidence", "persistence_1d", "persistence_3d", "persistence_7d", "hotspot_density"):
             rec[k] = int(base_row[k])
+        # Full posterior over the five learned classes (Unknown is the gate, not a class).
+        rec["class_probabilities"] = (
+            {CONSOLE_CLASS_LABELS[c]: (0.0 if probs[i, c] != probs[i, c] else float(probs[i, c])) for c in range(5)}
+            if probs is not None else None
+        )
         rec["evidence"] = build_evidence(src)
         records.append({k: rec[k] for k in CONSOLE_FIELDS})
     return records
@@ -423,3 +432,82 @@ def write_console_json(records: list[dict], path: Path, metadata: dict) -> dict:
             "class_distribution": meta["class_distribution"], "seconds": round(time.time() - t0, 1)}
     log.info("Console JSON written: %s (%d records, %.2f MB)", path, len(records), info["size_mb"])
     return info
+
+
+# --------------------------------------------------------------------------- #
+# Stand-alone refresh from an existing SQLite database
+# --------------------------------------------------------------------------- #
+def export_from_sqlite(db_path: Path, out_path: Path, days: int = 7, max_records: int | None = None,
+                       min_per_class: int | None = None) -> dict:
+    """Rebuild ``data/hotspots.json`` from ``hotspots_enriched`` without re-running the pipeline.
+
+    Reads only the trailing ``days`` window (plus the run metadata) so it takes
+    seconds even on the multi-million-row archive database.
+    """
+    import sqlite3
+    from src.config import CONSOLE_MAX_RECORDS, CONSOLE_MIN_PER_CLASS
+    from src.run_pipeline import select_latest   # lazy: run_pipeline imports this module
+
+    max_records = CONSOLE_MAX_RECORDS if max_records is None else max_records
+    min_per_class = CONSOLE_MIN_PER_CLASS if min_per_class is None else min_per_class
+    db_path = Path(db_path)
+    if not db_path.exists():
+        raise FileNotFoundError(f"SQLite database not found: {db_path}")
+    con = sqlite3.connect(db_path)
+    try:
+        t_max = con.execute("SELECT MAX(datetime_utc) FROM hotspots_enriched").fetchone()[0]
+        if t_max is None:
+            raise ValueError("hotspots_enriched is empty")
+        t_min = (pd.Timestamp(t_max) - pd.Timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        df = pd.read_sql("SELECT * FROM hotspots_enriched WHERE datetime_utc >= ?", con, params=(t_min,))
+        run = con.execute("SELECT run_id, run_utc, summary_json FROM pipeline_runs ORDER BY run_utc DESC LIMIT 1").fetchone()
+    finally:
+        con.close()
+    df["datetime_utc"] = pd.to_datetime(df["datetime_utc"])
+    for col in ("is_outbreak_front", "is_persistent_cluster"):
+        df[col] = df[col].astype(bool)
+    window_n = len(df)
+    sel = select_latest(df, days, max_records, min_per_class)
+    records = build_console_records(sel)
+    run_id, run_utc = (run[0], run[1]) if run else ("unknown", None)
+    threshold = None
+    if run and run[2]:
+        try:
+            threshold = json.loads(run[2]).get("confidence_threshold")
+        except (ValueError, AttributeError):
+            threshold = None
+    return write_console_json(records, out_path, {
+        "generated_utc": pd.Timestamp.now("UTC").strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "run_id": run_id,
+        "pipeline_run_utc": run_utc,
+        "window_days": days,
+        "window_start_utc": sel["datetime_utc"].min() if len(sel) else None,
+        "window_end_utc": sel["datetime_utc"].max() if len(sel) else None,
+        "candidates_in_window": int(window_n),
+        "cap": max_records,
+        "min_per_class": min_per_class,
+        "confidence_threshold": threshold if threshold is not None else CONFIDENCE_THRESHOLD,
+        "source_db": str(db_path),
+    })
+
+
+def main(argv=None) -> None:
+    """``python -m src.export.console_export [--db ...] [--out ...] [--days 7] [--max-records 3000]``"""
+    import argparse
+    import logging as _logging
+    from src.config import CONSOLE_JSON_OUT, CONSOLE_MAX_RECORDS, CONSOLE_MIN_PER_CLASS, SQLITE_DB
+
+    p = argparse.ArgumentParser(description="Rebuild the console export (data/hotspots.json) from data/hotspots.db")
+    p.add_argument("--db", type=Path, default=SQLITE_DB)
+    p.add_argument("--out", type=Path, default=CONSOLE_JSON_OUT)
+    p.add_argument("--days", type=int, default=7)
+    p.add_argument("--max-records", type=int, default=CONSOLE_MAX_RECORDS)
+    p.add_argument("--min-per-class", type=int, default=CONSOLE_MIN_PER_CLASS)
+    args = p.parse_args(argv)
+    _logging.basicConfig(level=_logging.INFO, format="%(asctime)s %(levelname)-7s %(name)s: %(message)s", datefmt="%H:%M:%S")
+    info = export_from_sqlite(args.db, args.out, args.days, args.max_records, args.min_per_class)
+    print(json.dumps(info, indent=2))
+
+
+if __name__ == "__main__":
+    main()

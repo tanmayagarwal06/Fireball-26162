@@ -277,6 +277,7 @@ Unknown) survive the cap, and maps every row onto the mock record shape.
 | `hotspot_density` | same | int |
 | `classification` | `predicted_class` | `Wildfire`, `Agricultural Burning`, `Industrial Fire`, `Gas Flare`, `Persistent Thermal Source`, `Unknown` |
 | `classification_confidence` | `confidence_score` | 0-1, 4 dp |
+| `class_probabilities` | `prob_class_0..4` | `{label: p}` over the five learned classes (sums to 1); Unknown is the gate, so it has no entry. The console's Investigation page renders these bars |
 | `risk_score` | derived | formula below, int 0-100 |
 | `evidence` | derived | 3-6 unique sentences |
 
@@ -314,8 +315,11 @@ and rule-prior agreement; (3) radiometric fallbacks so `--no-evidence` runs stil
 The phrasing deliberately differs from the sentences `backend/app.py` composes in
 `/hotspots/{id}/explanation`, which appends these strings after its own.
 
-Refresh: `python src/run_pipeline.py --reuse-model` then restart uvicorn (records are read once at
-import). The committed `data/hotspots.json` is a snapshot whose `run_id` is in its metadata.
+Refresh: `python src/run_pipeline.py --reuse-model` regenerates every output (~6 min), or
+`python -m src.export.console_export` rebuilds just `data/hotspots.json` from the existing
+`data/hotspots.db` in under a second (flags `--db`, `--out`, `--days`, `--max-records`,
+`--min-per-class`). Restart uvicorn afterwards (records are read once at import). The committed
+`data/hotspots.json` is a snapshot whose `run_id` is in its metadata.
 
 ---
 
@@ -577,9 +581,10 @@ The full summary of every run is stored in `data/pipeline_summary.json` and in t
   lower confidence or gated to Unknown. Feed at least 30 days of prior data when scoring new detections.
 * The SQLite export is I/O-bound (3.4 GB for the five-year archive); on a USB flash drive it takes about
   4 min, on an NVMe SSD well under 1 min. Use `--years` for lighter runs.
-* The console's thermal-evidence thresholds (150 / 60 MW FRP, 1100 / 900 K brightness) were tuned to the
-  mock fixture; real VIIRS FRP is typically 1-20 MW and I-4 brightness saturates at 367 K, so the
-  frontend's thermal axis reads "weak" for most genuine fires. The pipeline's own evidence sentences and
-  the risk score use the real scale.
+* The console's thermal-evidence bands are set on the VIIRS scale (strong >= 20 MW or >= 350 K,
+  moderate >= 6 MW or >= 330 K), so most small burns read "weak" on that axis by design.
+* Map tiles come from keyless public services (Esri World Dark Gray Canvas, Esri World Imagery,
+  OpenStreetMap) and fonts from Google Fonts; the console therefore needs internet access even though
+  the pipeline itself does not.
 * `data/hotspots.json` is a capped 3,000-record snapshot of the latest 7-day window; console aggregates
   describe that snapshot, not the full archive in `data/hotspots.db`.

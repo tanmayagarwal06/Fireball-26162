@@ -89,6 +89,15 @@ export interface Hotspot {
    */
   classification_confidence: number | null;
 
+  /**
+   * Posterior probability over the five learned classes, keyed by API label
+   * ("Wildfire", "Agricultural Burning", "Industrial Fire", "Gas Flare",
+   * "Persistent Thermal Source"), each 0-1, summing to ~1. "Unknown" is the
+   * confidence gate (max probability < 0.60), not a class, so it has no entry.
+   * Present on pipeline-exported records; absent/null on the mock fixture.
+   */
+  class_probabilities?: Record<string, number> | null;
+
   /** Composite operational risk score, 0-100 (pipeline formula risk-v1; see PIPELINE_AND_MODEL_DOCS.md 2.7). */
   risk_score: number;
 

@@ -18,6 +18,7 @@ python -m pip install -r requirements-pipeline.txt
 # put FIRMS CSV exports in data/raw/ (see data/raw/README.txt), then:
 python src/run_pipeline.py                 # full archive: train + every output (~7 min, GPU optional)
 python src/run_pipeline.py --reuse-model   # refresh every output with the saved model (~6 min)
+python -m src.export.console_export        # rebuild only data/hotspots.json from data/hotspots.db (<1 s)
 python src/run_pipeline.py --years 2024 --sample-frac 0.02 --reuse-model   # 5 s smoke run
 ```
 
@@ -49,4 +50,5 @@ npm run typecheck && npm test && npm run build
 ```
 
 Override the API location with `VITE_API_BASE_URL` in `frontend/.env.local` (see `.env.example`).
-The map tiles (CARTO / OpenStreetMap) and fonts load from the internet.
+The map tiles (Esri dark canvas / Esri imagery / OpenStreetMap, all keyless) and fonts load from the
+internet, so the console needs connectivity even though the pipeline runs fully offline.
