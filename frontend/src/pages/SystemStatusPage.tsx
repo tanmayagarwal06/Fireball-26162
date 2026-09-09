@@ -63,9 +63,9 @@ const LIMITATIONS: Array<{ title: string; detail: string; severity: 'defect' | '
   },
   {
     severity: 'note',
-    title: 'Per-class probabilities not yet surfaced',
+    title: 'Probabilities cover five classes; Unknown is a gate',
     detail:
-      'The pipeline computes a five-class probability vector (XGBoost with rule-based priors and a 0.60 confidence gate), but the console schema exposes one classification_confidence scalar. The six-class probability chart stays empty until the API serves the vector.',
+      'Each exported record carries class_probabilities, the classifier posterior over Wildfire, Agricultural Burning, Industrial Fire, Gas Flare and Persistent Thermal Source (XGBoost blended with rule-based priors). Unknown is assigned when the leading probability is below 0.60, so it has no probability of its own. Records from the mock fixture carry no vector.',
   },
   {
     severity: 'note',
@@ -81,9 +81,9 @@ const LIMITATIONS: Array<{ title: string; detail: string; severity: 'defect' | '
   },
   {
     severity: 'note',
-    title: 'Thermal evidence bands predate real VIIRS data',
+    title: 'Thermal evidence bands are on the VIIRS 375 m scale',
     detail:
-      'The console grades thermal evidence with thresholds of 150 / 60 MW FRP and 1100 / 900 K brightness, chosen for the mock fixture. Real VIIRS detections typically carry 1-20 MW and the I-4 channel saturates at 367 K, so the thermal axis will usually read weak even for genuine fires.',
+      'Thermal evidence is graded strong at FRP >= 20 MW or brightness >= 350 K and moderate at >= 6 MW or >= 330 K, set from the export distribution (median 3 MW / 331 K, 99th percentile 30 MW; the I-4 channel saturates at 367 K). Most detections are small burns and read weak on this axis by design.',
   },
 ];
 

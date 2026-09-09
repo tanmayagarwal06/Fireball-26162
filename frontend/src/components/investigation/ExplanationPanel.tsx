@@ -17,9 +17,11 @@ import type { ExplanationResponse } from '../../types/api';
 
 /**
  * Normalisation ranges for the risk-factor bars.
- * Chosen from the observed spread in the dataset, and stated in the UI.
+ * Chosen from the observed spread in the pipeline export (VIIRS FRP: 99th
+ * percentile ~30 MW, which is also where the risk formula saturates), and
+ * stated in the UI.
  */
-const FRP_SCALE_MW = 250;
+const FRP_SCALE_MW = 30;
 const PERSISTENCE_SCALE_DAYS = 7;
 const PROXIMITY_SCALE_KM = 5;
 

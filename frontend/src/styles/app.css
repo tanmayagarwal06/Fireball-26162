@@ -202,7 +202,7 @@
   /*
    * Leaflet ships light-theme chrome. These overrides pull it into the console's
    * dark, square-cornered language. Attribution stays legible — it is required
-   * by the OpenStreetMap and CARTO tile licences.
+   * by the OpenStreetMap and Esri tile licences.
    */
   .leaflet-container {
     background: var(--color-surface-lowest);

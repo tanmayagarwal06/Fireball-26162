@@ -36,6 +36,6 @@ export const PROVENANCE: Record<ProvenanceKey, ProvenanceDefinition> = {
     key: 'PENDING_MODEL',
     tag: 'AWAITING MODEL',
     description:
-      'Requires per-class model probabilities, which the offline pipeline computes but the console API does not yet serve. No value is shown because none is served.',
+      'Not produced by the current system: either free-text model rationale (nothing generates it) or a probability vector on a record that carries none. No value is shown because none exists.',
   },
 };

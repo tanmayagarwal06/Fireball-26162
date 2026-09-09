@@ -12,9 +12,8 @@
  * The pipeline already ships real feature attributions (TreeSHAP) as the record's
  * `evidence` strings; once the API exposes them in structured form these
  * heuristics should be replaced, not extended. The consuming component reads
- * `EvidenceAssessment[]`, so swapping the source is a local change. Note the
- * thermal thresholds below were tuned to the mock fixture; real VIIRS FRP is
- * typically 1-20 MW and I-4 brightness saturates at 367 K.
+ * `EvidenceAssessment[]`, so swapping the source is a local change. The thermal
+ * thresholds below are set on the real VIIRS scale of the pipeline export.
  */
 import { parseClassification, type ClassificationKey } from './classification';
 import { resolvePersistenceDays, PERSISTENCE_THRESHOLD_DAYS } from './persistence';
@@ -55,13 +54,21 @@ export interface EvidenceAssessment {
 /* Thresholds                                                                 */
 /* -------------------------------------------------------------------------- */
 
-/** FRP in MW. Derived from the spread present in the dataset (38.9 - 231.8 MW). */
-export const FRP_STRONG_MW = 150;
-export const FRP_MODERATE_MW = 60;
+/**
+ * FRP in MW, on the VIIRS 375 m scale: the pipeline export has a median of
+ * ~3 MW, a 90th percentile of ~9 MW and a 99th percentile of ~30 MW. 20 MW is
+ * therefore a top-2 % release and 6 MW sits just above the upper quartile.
+ */
+export const FRP_STRONG_MW = 20;
+export const FRP_MODERATE_MW = 6;
 
-/** Brightness temperature in Kelvin. */
-export const BRIGHTNESS_STRONG_K = 1100;
-export const BRIGHTNESS_MODERATE_K = 900;
+/**
+ * VIIRS I-4 (3.74 um) brightness temperature in Kelvin. Background is 290-310 K,
+ * the channel saturates at 367 K; 350 K is the 95th percentile of detections
+ * and 330 K is roughly the median.
+ */
+export const BRIGHTNESS_STRONG_K = 350;
+export const BRIGHTNESS_MODERATE_K = 330;
 
 /** Proximity bands, matching the backend's own /statistics buckets. */
 export const PROXIMITY_STRONG_KM = 0.5;
