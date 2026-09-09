@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 import json
+import logging
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,16 +38,19 @@ app.add_middleware(
 
 
 # ============================================================
-# 2. LOAD MOCK DATA
+# 2. LOAD HOTSPOT DATA
 # ============================================================
 
 # app.py is inside:
 #
 # Fireball-26162/backend/app.py
 #
-# hotspots.json is inside:
+# Two candidate data files, same record schema:
 #
-# Fireball-26162/mock/hotspots.json
+# Fireball-26162/data/hotspots.json  <- written by src/run_pipeline.py
+#                                       (capped export of the latest
+#                                       7-day window of real FIRMS data)
+# Fireball-26162/mock/hotspots.json  <- hand-written fallback fixture
 #
 # Therefore:
 # __file__ -> backend/app.py
@@ -54,16 +58,24 @@ app.add_middleware(
 # parent.parent -> Fireball-26162/
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-HOTSPOTS_FILE = BASE_DIR / "mock" / "hotspots.json"
+PIPELINE_HOTSPOTS_FILE = BASE_DIR / "data" / "hotspots.json"
+MOCK_HOTSPOTS_FILE = BASE_DIR / "mock" / "hotspots.json"
+HOTSPOTS_FILE = (
+    PIPELINE_HOTSPOTS_FILE if PIPELINE_HOTSPOTS_FILE.exists() else MOCK_HOTSPOTS_FILE
+)
 
 
 def load_hotspots():
-    """Load hotspot data from the mock JSON file."""
+    """Load hotspot records from the pipeline export, or the mock fixture if absent."""
 
     if not HOTSPOTS_FILE.exists():
         raise FileNotFoundError(
             f"Could not find hotspots.json at: {HOTSPOTS_FILE}"
         )
+
+    logging.getLogger("uvicorn.error").info(
+        "Loading hotspots from %s", HOTSPOTS_FILE
+    )
 
     with open(HOTSPOTS_FILE, "r", encoding="utf-8") as file:
         data = json.load(file)
@@ -95,7 +107,7 @@ def confidence_as_percent(value):
     """
     Convert confidence into a percentage.
 
-    Your mock data may contain either:
+    The loaded data may contain either:
         0.91
     or:
         91
@@ -177,7 +189,8 @@ def is_industrial_related(hotspot):
     Determine whether a hotspot is associated with industrial
     infrastructure.
 
-    For now we use the explicit field from the mock data.
+    Uses the explicit boolean carried by every loaded record (the pipeline
+    export emits a real bool, matching the mock fixture).
     """
 
     if hotspot.get("inside_industrial_polygon") is True:
@@ -512,7 +525,7 @@ def get_alerts(
     """
     Generate operational alerts from hotspots.
 
-    For now alerts are derived from the mock hotspot dataset.
+    For now alerts are derived from the loaded hotspot dataset on each request.
     """
 
     alerts = []
