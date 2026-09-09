@@ -2,8 +2,8 @@
  * Data provenance.
  *
  * The brief requires the console to visibly distinguish three kinds of value:
- * what the API actually returned, what the frontend computed, and what is
- * waiting on the classification engine. Encoding that as a first-class concept
+ * what the API actually returned, what the frontend computed, and what the
+ * pipeline computes but the API does not yet serve. Encoding that as a first-class concept
  * means every screen can label its values consistently and no placeholder can
  * silently pass itself off as a real measurement.
  */
@@ -36,6 +36,6 @@ export const PROVENANCE: Record<ProvenanceKey, ProvenanceDefinition> = {
     key: 'PENDING_MODEL',
     tag: 'AWAITING MODEL',
     description:
-      'Requires the classification engine, which is not implemented yet. No value is shown because none exists.',
+      'Requires per-class model probabilities, which the offline pipeline computes but the console API does not yet serve. No value is shown because none is served.',
   },
 };

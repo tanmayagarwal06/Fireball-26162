@@ -9,9 +9,12 @@
  * (the 0.5 km and 2 km proximity bands from `/statistics`, the 7-day persistence
  * line) so the investigation view never contradicts the analytics view.
  *
- * When the classification engine arrives it will supply real feature attribution
- * and these heuristics should be replaced, not extended. The consuming component
- * reads `EvidenceAssessment[]`, so swapping the source is a local change.
+ * The pipeline already ships real feature attributions (TreeSHAP) as the record's
+ * `evidence` strings; once the API exposes them in structured form these
+ * heuristics should be replaced, not extended. The consuming component reads
+ * `EvidenceAssessment[]`, so swapping the source is a local change. Note the
+ * thermal thresholds below were tuned to the mock fixture; real VIIRS FRP is
+ * typically 1-20 MW and I-4 brightness saturates at 367 K.
  */
 import { parseClassification, type ClassificationKey } from './classification';
 import { resolvePersistenceDays, PERSISTENCE_THRESHOLD_DAYS } from './persistence';
@@ -345,7 +348,7 @@ function assessModelConfidence(hotspot: Hotspot): EvidenceAssessment {
 
   let strength: EvidenceStrength = 'unavailable';
   let interpretation =
-    'No classification confidence is recorded. The classification engine is not yet integrated.';
+    'No classification confidence is recorded for this hotspot.';
 
   if (confidence !== null) {
     if (confidence >= CONFIDENCE_STRONG_PCT) {

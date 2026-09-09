@@ -1,14 +1,13 @@
 /**
  * Hotspot record shape.
  *
- * Derived field-by-field from the live responses of `backend/app.py` and the
- * records in `mock/hotspots.json`. Nothing here is speculative: if a field is
- * listed, the backend returns it today.
- *
- * The backend performs no serialisation of its own — it echoes the raw JSON
- * objects straight out of mock/hotspots.json — so this interface is effectively
- * the mock data schema. Optional/nullable markers reflect what the data
- * actually contains (e.g. `nearest_facility_type` is null for 4 of 11 records).
+ * Derived field-by-field from the live responses of `backend/app.py`. The
+ * backend performs no serialisation of its own — it echoes the raw JSON objects
+ * from `data/hotspots.json` (the pipeline's console export, produced by
+ * `src/export/console_export.py`) or, if that file is absent, from the
+ * `mock/hotspots.json` fixture. Both share this schema exactly. Nullable markers
+ * reflect what the data actually contains (e.g. `nearest_facility_type` is null
+ * when no mapped facility lies within 25 km).
  */
 export interface Hotspot {
   /** Stable record identifier, e.g. "H001". Path parameter for /hotspots/{id}. */
@@ -33,7 +32,7 @@ export interface Hotspot {
   /**
    * Brightness temperature in Kelvin.
    *
-   * Present on every record in the current mock dataset, but nullable: real FIRMS
+   * Present on every record in the current export, but nullable: real FIRMS
    * granules do omit these fields, and the consuming code already guards for it
    * (see `thermalPoints()` in src/domain/aggregate.ts, which exists to drop
    * records missing either thermal axis).
@@ -83,18 +82,20 @@ export interface Hotspot {
   classification: string;
 
   /**
-   * Confidence in the *classification*, expressed 0-1 in the mock data.
+   * Confidence in the *classification*, expressed 0-1 in the data (the pipeline's
+   * gated max class probability; below 0.60 the class is "Unknown").
    * `/hotspots` and `/hotspots/{id}` return the raw 0-1 float; `/alerts` and
    * `/hotspots/{id}/explanation` return the same value already scaled to 0-100.
    */
   classification_confidence: number | null;
 
-  /** Composite operational risk score, 0-100. */
+  /** Composite operational risk score, 0-100 (pipeline formula risk-v1; see PIPELINE_AND_MODEL_DOCS.md 2.7). */
   risk_score: number;
 
   /**
-   * Pre-authored evidence strings from the mock dataset. These are human-written
-   * justifications, not model output.
+   * Evidence strings authored by the pipeline: TreeSHAP feature attributions and
+   * context rules rendered as sentences (human-written in the mock fixture).
+   * Not free-form language-model output.
    */
   evidence: string[];
 }

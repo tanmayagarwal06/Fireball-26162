@@ -377,7 +377,7 @@ function MapToolbar({
       {onRefresh ? (
         <div
           className="border border-outline-variant bg-surface-lowest/95 px-2 py-0.5"
-          title="Hotspot data is fetched on request. The backend serves a static mock dataset with no live ingestion."
+          title="Hotspot data is fetched on request from a file-backed pipeline export (data/hotspots.json). No live ingestion."
         >
           <span className="font-mono text-[10px] text-outline">
             {isRefreshing

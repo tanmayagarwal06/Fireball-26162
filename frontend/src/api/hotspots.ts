@@ -34,9 +34,9 @@ export function getHotspot(id: string, signal?: AbortSignal): Promise<Hotspot> {
 /**
  * `GET /hotspots/{id}/explanation`
  *
- * Returns a deterministic evidence summary built from structured fields. This is
- * NOT model output — the classification engine does not exist yet. Anything
- * rendered from this response must be presented as rule-derived evidence.
+ * Returns a deterministic evidence summary: backend rules over structured fields
+ * plus the record's pipeline-authored evidence strings (model feature attributions
+ * rendered as text). It is not free-form model reasoning; render it as evidence.
  */
 export function getHotspotExplanation(
   id: string,

@@ -42,7 +42,7 @@ export function ExplanationPanel({ explanation }: { explanation: ExplanationResp
       label: 'Persistence',
       raw: `${factors.persistence_days} d`,
       ratio: Math.min(1, factors.persistence_days / PERSISTENCE_SCALE_DAYS),
-      basis: `Normalised against ${PERSISTENCE_SCALE_DAYS} days. Backend value is affected by the get_persistence() defect.`,
+      basis: `Normalised against ${PERSISTENCE_SCALE_DAYS} days (distinct prior detection days within 1 km).`,
     },
     {
       key: 'proximity',
@@ -81,8 +81,9 @@ export function ExplanationPanel({ explanation }: { explanation: ExplanationResp
         {/* Set expectations before the operator reads the bullet points. */}
         <p className="border-l-2 border-outline-variant bg-surface-lowest px-2 py-1.5 text-body-sm text-on-surface-variant">
           <Icon className="mr-1 align-[-2px] text-outline" name="info" size={12} />
-          Assembled by the backend from structured fields using fixed rules. This is an evidence
-          summary, not model reasoning — the classification engine is not integrated yet.
+          Assembled by the backend from structured fields using fixed rules, plus the pipeline&apos;s
+          recorded evidence strings (model feature attributions and context rules). It is a
+          deterministic evidence summary, not free-form model reasoning.
         </p>
 
         {explanation.supporting_evidence.length > 0 ? (

@@ -7,7 +7,7 @@
  * each issuing their own request.
  *
  * This is a health check only. It does not imply live satellite ingestion — the
- * backend serves a static mock dataset.
+ * backend serves a file-backed export loaded once at startup.
  */
 import {
   createContext,

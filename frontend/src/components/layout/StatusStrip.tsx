@@ -3,7 +3,7 @@
  *
  * Every value here is real: connectivity comes from `/health`, the record count
  * is the backend's own `hotspots_loaded`, and the data source is stated plainly
- * as a mock dataset. This is where the console is honest about what it is
+ * as a file-backed pipeline export. This is where the console is honest about what it is
  * connected to, which matters more than a polished number would.
  */
 import { API_BASE_URL } from '../../api/client';
@@ -55,12 +55,12 @@ export function StatusStrip({
 
       <Divider />
 
-      {/* Named explicitly as a mock dataset — there is no live FIRMS ingestion. */}
+      {/* Named explicitly as a file-backed export — there is no live FIRMS ingestion. */}
       <span
         className="shrink-0 text-label uppercase text-on-surface-variant"
-        title="Records loaded by the backend from mock/hotspots.json at startup. This is a static mock dataset, not a live NASA FIRMS feed."
+        title="Records loaded by the backend at startup from data/hotspots.json, a capped export of the latest 7-day window produced by src/run_pipeline.py. Not a live NASA FIRMS feed."
       >
-        Source: mock dataset
+        Source: pipeline export
         {health ? (
           <span className="ml-1.5 font-mono normal-case text-on-surface">
             {formatCount(health.hotspots_loaded)} records

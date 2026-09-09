@@ -320,7 +320,7 @@ export function InvestigatorPage() {
                         </p>
                       </div>
 
-                      {/* The empty slot the classification engine will fill. */}
+                      {/* The empty slot a served per-class probability vector would fill. */}
                       <div className="flex items-start gap-2 bg-tertiary/5 p-gutter">
                         <Icon className="mt-0.5 shrink-0 text-tertiary" name="psychology" size={14} />
                         <div className="min-w-0">
@@ -331,9 +331,9 @@ export function InvestigatorPage() {
                             <ProvenanceTag provenance="PENDING_MODEL" />
                           </div>
                           <p className="mt-1 text-body-sm text-on-surface-variant">
-                            Reserved for the classification engine&apos;s reasoning. Deliberately
-                            empty — writing a plausible sentence here would misrepresent what the
-                            system can currently do.
+                            Reserved for model reasoning once the API serves the pipeline&apos;s
+                            per-class probabilities. Deliberately empty — writing a plausible
+                            sentence here would misrepresent what the system can currently do.
                           </p>
                         </div>
                       </div>

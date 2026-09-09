@@ -6,9 +6,9 @@
  * cannot be populated without inventing five numbers.
  *
  * This renders the one real value, then reserves the distribution area and states
- * plainly that it needs the classification engine. The empty rows are drawn at
- * zero width so the layout the model will fill is visible, but no figure is
- * shown for any class.
+ * plainly that the API does not yet serve the pipeline's per-class probability
+ * vector. The empty rows are drawn at zero width so the layout is visible, but
+ * no figure is shown for any class.
  */
 import { CLASSIFICATION_LIST, getClassification } from '../../domain/classification';
 import { formatRatioAsPercent, toPercentScale } from '../../domain/format';
@@ -92,8 +92,8 @@ export function ClassificationPanel({ hotspot }: { hotspot: Hotspot }) {
           <div className="flex flex-col gap-1.5 p-compact">
             <p className="text-body-sm text-on-surface-variant">
               The backend returns one confidence scalar, not a distribution across the six classes.
-              This panel stays empty until the classification engine is integrated — no values are
-              estimated here.
+              The pipeline computes the five-class vector, but the API does not serve it yet, so this
+              panel stays empty — no values are estimated here.
             </p>
 
             <ul className="flex flex-col gap-1 pt-1">

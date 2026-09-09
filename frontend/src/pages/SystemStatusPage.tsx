@@ -38,10 +38,10 @@ const ENDPOINTS: Array<{ method: string; path: string; purpose: string }> = [
   {
     method: 'GET',
     path: '/hotspots/{id}/explanation',
-    purpose: 'Rule-based evidence summary (not model output)',
+    purpose: 'Deterministic evidence summary: backend rules plus pipeline evidence strings',
   },
-  { method: 'GET', path: '/statistics', purpose: 'Dataset-wide aggregates, unfiltered' },
-  { method: 'GET', path: '/alerts', purpose: 'Alerts derived from hotspots on each request' },
+  { method: 'GET', path: '/statistics', purpose: 'Aggregates over the loaded export, unfiltered' },
+  { method: 'GET', path: '/alerts', purpose: 'Alerts derived from the loaded records on each request' },
 ];
 
 /**
@@ -53,31 +53,37 @@ const LIMITATIONS: Array<{ title: string; detail: string; severity: 'defect' | '
     severity: 'fixed',
     title: 'Backend persistence calculation — resolved',
     detail:
-      'get_persistence() in backend/app.py previously applied a truthiness test to persistence_7d, an integer day count, and returned the look-back window length instead. Every record has a non-zero value, so it returned 7 for all of them: /statistics reported all 11 hotspots as 7+ day persistent and ?min_persistence= matched the whole dataset. It now returns the real count. Verified: persistent_sources is 2 (H001 and H011), the distribution is 5 / 4 / 2, and ?min_persistence= returns 11 / 9 / 5 / 2 for thresholds 1 / 2 / 4 / 7. The client-side workaround has been removed and persistence filtering is served by the API.',
+      'get_persistence() in backend/app.py previously applied a truthiness test to persistence_7d, an integer day count, and returned the look-back window length instead, so every record read as 7+ day persistent and ?min_persistence= matched the whole dataset. It now returns the real count. Verified against the mock fixture at the time of the fix; the loaded export carries pipeline-computed day counts (distinct prior detection days within 1 km). The client-side workaround has been removed and persistence filtering is served by the API.',
   },
   {
     severity: 'note',
-    title: 'Dataset contains a single acquisition date',
+    title: 'Capped snapshot of the latest 7-day window',
     detail:
-      'All records share acq_date 2026-08-27, so no genuine time series exists. Trend views will show a single bucket and state the limitation rather than invent history.',
+      'data/hotspots.json holds at most 3,000 records from the last 7 days of the processed FIRMS archive, ranked by anomaly flags, class and FRP with a per-class floor so rare classes stay visible. Aggregates on this console describe that snapshot, not the full multi-million-row database behind it.',
   },
   {
     severity: 'note',
-    title: 'No per-class probability distribution',
+    title: 'Per-class probabilities not yet surfaced',
     detail:
-      'The backend exposes one classification_confidence scalar. The six-class probability chart in the Stitch investigation design cannot be populated until the classification engine exists.',
+      'The pipeline computes a five-class probability vector (XGBoost with rule-based priors and a 0.60 confidence gate), but the console schema exposes one classification_confidence scalar. The six-class probability chart stays empty until the API serves the vector.',
   },
   {
     severity: 'note',
     title: 'Alerts are computed, not stored',
     detail:
-      '/alerts recalculates from hotspot records on every request. There is no alert store, acknowledgement state or notification delivery.',
+      '/alerts recalculates from hotspot records on every request. There is no alert store, acknowledgement state or notification delivery. risk_score is a documented pipeline formula (risk-v1), not an analyst judgement.',
   },
   {
     severity: 'note',
-    title: 'Static mock dataset',
+    title: 'File-backed dataset, no live ingestion',
     detail:
-      'Records are read once from mock/hotspots.json at server startup. There is no live NASA FIRMS ingestion and no scheduled refresh.',
+      'Records are read once at server start from data/hotspots.json (falling back to mock/hotspots.json if the export is missing). Refresh by re-running src/run_pipeline.py --reuse-model and restarting the backend. There is no scheduled NASA FIRMS ingestion.',
+  },
+  {
+    severity: 'note',
+    title: 'Thermal evidence bands predate real VIIRS data',
+    detail:
+      'The console grades thermal evidence with thresholds of 150 / 60 MW FRP and 1100 / 900 K brightness, chosen for the mock fixture. Real VIIRS detections typically carry 1-20 MW and the I-4 channel saturates at 367 K, so the thermal axis will usually read weak even for genuine fires.',
   },
 ];
 

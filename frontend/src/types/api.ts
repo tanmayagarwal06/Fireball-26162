@@ -7,7 +7,7 @@
 export interface HealthResponse {
   status: string;
   service: string;
-  /** Number of records loaded from mock/hotspots.json at server start. */
+  /** Number of records loaded at server start (data/hotspots.json, or mock/hotspots.json as fallback). */
   hotspots_loaded: number;
 }
 
@@ -109,8 +109,8 @@ export type AlertQuery = {
  * `GET /hotspots/{id}/explanation`
  *
  * IMPORTANT: this is a deterministic evidence summary assembled from structured
- * fields by `get_hotspot_explanation()`. It is not model output and contains no
- * learned reasoning. The classification engine is not built yet.
+ * fields by `get_hotspot_explanation()`, plus the record's pipeline-authored
+ * `evidence` strings. It contains no free-form learned reasoning.
  */
 export interface ExplanationResponse {
   hotspot_id: string;

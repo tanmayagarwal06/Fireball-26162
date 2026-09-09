@@ -73,9 +73,10 @@ export function InvestigationPage() {
 
     const payload = {
       exported_at: new Date().toISOString(),
-      source: 'Thermal Intelligence console (SIH26162) — prototype backed by a mock dataset',
+      source:
+        'Thermal Intelligence console (SIH26162) — prototype backed by a pipeline export of NASA FIRMS archive data',
       notice:
-        'api_record and backend_explanation are verbatim API responses. derived_assessment is computed by the frontend using documented heuristics. No machine-learning model was involved.',
+        'api_record and backend_explanation are verbatim API responses. derived_assessment is computed by the frontend using documented heuristics. The classification, confidence and evidence strings in api_record come from the offline XGBoost pipeline (rule priors, 0.60 confidence gate, TreeSHAP attributions); no generative model was involved.',
       api_record: hotspot,
       backend_explanation: explanation.data ?? null,
       derived_assessment: assessments.map((assessment) => ({
