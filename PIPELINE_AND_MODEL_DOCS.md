@@ -71,6 +71,7 @@ flowchart TD
 | 2 Features | `src/pipeline/feature_engineer.py` | `engineer_features(df, spatial_ref)` |
 | 3a Classifier | `src/ml/classifier.py` | `FireClassifier.fit / predict`, `assign_rule_labels` |
 | 3b Clustering | `src/ml/anomaly_detector.py` | `run_anomaly_detection(df)` |
+| 3c Console export | `src/export/console_export.py` | `build_console_records(df)`, `write_console_json(...)` |
 | 4 Runner | `src/run_pipeline.py` | `python src/run_pipeline.py` |
 | Constants | `src/config.py` | paths, thresholds, class labels |
 
@@ -79,19 +80,21 @@ flowchart TD
 ```bash
 python -m pip install -r requirements-pipeline.txt
 python src/run_pipeline.py                   # full archive in data/raw (2020-2024, ~6 M rows)
+python src/run_pipeline.py --reuse-model     # refresh every output without retraining (~6 min)
 python src/run_pipeline.py --years 2024      # single year (~85 s)
 python src/run_pipeline.py --quick           # 5 % random sample smoke test
 python src/run_pipeline.py --backend lightgbm --no-evidence   # CPU-only, fastest
-python src/run_pipeline.py --reuse-model     # skip training, reuse data/models/fire_classifier.pkl
 ```
 
 All flags: `--raw-dir`, `--years`, `--max-rows`, `--sample-frac`, `--quick`, `--backend {xgboost,lightgbm}`,
 `--device {auto,cpu,cuda}`, `--threshold`, `--rule-prior-weight`, `--max-per-class`, `--no-evidence`,
 `--reuse-model`, `--eps-km`, `--min-samples`, `--geojson-days`, `--geojson-max-features`, `--db`,
-`--geojson`, `--summary-json`, `--model-path`, `--worldcover-dir`, `--rebuild-reference`, `--log-level`.
+`--geojson`, `--clusters-geojson`, `--console-json`, `--console-max-records`, `--console-min-per-class`,
+`--no-console-json`, `--summary-json`, `--model-path`, `--worldcover-dir`, `--rebuild-reference`,
+`--log-level`.
 
-The existing FastAPI backend and frontend are untouched; they only need to read the SQLite tables and
-the GeoJSON file described below.
+The FastAPI backend (`backend/app.py`) reads `data/hotspots.json` (section 2.7) and falls back to
+`mock/hotspots.json` when that export is absent; its routes and the frontend logic are unchanged.
 
 ---
 
@@ -209,9 +212,10 @@ directly.
 
 ### 2.6 Integration notes for the FastAPI backend
 
-`backend/app.py` currently serves `mock/hotspots.json`. The pipeline outputs carry every field the mock
-records use; the mapping below is what a loader needs when switching the backend to `data/hotspots.db`
-(or to the GeoJSON `properties`). No API route has to change.
+`backend/app.py` serves `data/hotspots.json` when it exists and `mock/hotspots.json` otherwise. The
+mapping below is what `src/export/console_export.py` (section 2.7) implements to turn pipeline columns
+into that console schema; it also applies to anyone reading `data/hotspots.db` or the GeoJSON
+`properties` directly. No API route had to change.
 
 | Mock field | Pipeline column | Note |
 |---|---|---|
@@ -230,8 +234,88 @@ records use; the mapping below is what a loader needs when switching the backend
 | `hotspot_density` | `hotspot_density` | |
 | `classification` | `predicted_label` (`predicted_class` numeric) | includes `Unknown` |
 | `classification_confidence` | `confidence_score` | 0-1 |
-| `evidence` | `evidence_scores` (JSON of top-3 SHAP contributions) | render as sentences client-side or server-side |
-| `risk_score` | not produced | derive e.g. from `frp`, `confidence_score`, `is_outbreak_front`, `cluster_fire_count` |
+| `evidence` | `evidence_scores` (JSON of top-3 SHAP contributions) + context columns | rendered as sentences by `console_export.build_evidence` |
+| `risk_score` | derived by `console_export.compute_risk_score` | formula `risk-v1`, section 2.7 |
+
+### 2.7 Console export (`data/hotspots.json`)
+
+`src/export/console_export.py` writes the operator-console dataset the backend loads at startup. It
+selects the latest `--geojson-days` (7) days of detections, caps them at `--console-max-records`
+(3,000, so the Leaflet console can render one marker per record) after reserving up to
+`--console-min-per-class` (40) highest-priority rows per class so rare classes (Industrial fire,
+Unknown) survive the cap, and maps every row onto the mock record shape.
+
+**File shape**
+
+```json
+{"hotspots": [ {...console record...}, ... ],
+ "metadata": {"schema_version": "console-1", "generated_utc": "...", "run_id": "...",
+              "window_days": 7, "window_start_utc": "...", "window_end_utc": "...",
+              "candidates_in_window": 15523, "cap": 3000, "min_per_class": 40,
+              "record_count": 3000, "class_distribution": {...},
+              "risk_formula": {"version": "risk-v1", "weights": {...}},
+              "facility_context_km": 25.0, "confidence_threshold": 0.6, "source_db": "..."}}
+```
+
+**Record conversions**
+
+| Console field | Source | Conversion |
+|---|---|---|
+| `id` | `hotspot_id` | as is (16 hex) |
+| `lat`, `lon` | `latitude`, `longitude` | 5 dp |
+| `acq_date`, `acq_time` | `acq_date`, `acq_time` | `HHMM` -> `HH:MM` |
+| `satellite` | `satellite` + `instrument` | `VIIRS_SNPP`, `VIIRS_NOAA20`, `VIIRS_NOAA21`, `MODIS_TERRA`, `MODIS_AQUA` |
+| `brightness_temperature` | `brightness` | K, 1 dp |
+| `frp` | `frp` | MW, 2 dp |
+| `confidence` | `confidence_numeric` | int 0-100 |
+| `day_night` | `daynight` | `D` / `N` |
+| `persistence_1d/3d/7d` | same | int day counts |
+| `distance_to_industry_km` | same | km, 2 dp, never null |
+| `inside_industrial_polygon` | same | real JSON boolean |
+| `nearest_facility_type` | `nearest_facility_type` | label map below; `null` when distance > 25 km |
+| `land_cover_class` | `land_cover_class` (ESA code) | ESA class name (`Tree cover`, `Cropland`, `Built-up`, ...) |
+| `hotspot_density` | same | int |
+| `classification` | `predicted_class` | `Wildfire`, `Agricultural Burning`, `Industrial Fire`, `Gas Flare`, `Persistent Thermal Source`, `Unknown` |
+| `classification_confidence` | `confidence_score` | 0-1, 4 dp |
+| `risk_score` | derived | formula below, int 0-100 |
+| `evidence` | derived | 3-6 unique sentences |
+
+Facility labels: `oil_gas_flare`, `gas_processing`, `lng_terminal` -> `Oil & Gas`; `refinery*` ->
+`Refinery`; `chemical_refinery`, `petrochemical` -> `Chemical Plant`; `power_coal` -> `Power Plant`;
+`steel_smelter` -> `Steel Plant`; `coal_mining_fire` -> `Coal Mine`; `industrial_unknown` ->
+`Industrial Area`. The first three are the labels the console's "Gas flare candidates" saved query
+matches. Because the embedded reference layer has only 45 polygons, a facility hundreds of km away is
+not context, hence the 25 km null rule; `distance_to_industry_km` itself is always populated so the
+backend's proximity buckets count every record.
+
+**Risk score (`risk-v1`)**, deterministic, all terms in points:
+
+$$
+\text{risk} = \operatorname{clip}\Big(\text{prior}_c + 30\min\!\big(1, \tfrac{\ln(1+F)}{\ln 31}\big)
++ 10\,\tfrac{\min(p_7, 7)}{7} + 14\,\pi + 14\,o + 5\,s + 8\min\!\big(1, \tfrac{\ln(1+n)}{\ln 51}\big) + 5\,q,\ 0,\ 100\Big)
+$$
+
+with class prior $\text{prior}_c$ = Industrial Fire 55, Wildfire 35, Persistent Thermal Source 28,
+Gas Flare 22, Agricultural Burning 12, Unknown 8; $F$ = FRP (MW); $p_7$ = `persistence_7d`;
+$\pi = 1$ inside an industrial polygon, else $\max(0, 1 - d/5\,\text{km})$; $o$ = `is_outbreak_front`;
+$s$ = `is_persistent_cluster`; $n$ = `cluster_fire_count`; $q$ = `confidence_score`. On the
+2024-12-24..31 window the capped export scores 1.5 % of records >= 90 (backend status NEEDS
+INVESTIGATION), 25 % in 80-89 (NEW), 62 % in 50-79 and 11 % below 50, with class medians Industrial
+Fire 100, Persistent Thermal Source 78, Wildfire 75, Gas Flare 73, Agricultural Burning 49, Unknown 43.
+The weights live in `RISK_WEIGHTS` and are embedded in the file's metadata.
+
+**Evidence sentences** are built in three tiers and de-duplicated: (1) the top-3 TreeSHAP attributions
+from `evidence_scores`, each rendered as "Model attribution: <feature phrase> supports / argues against
+the <class> call (+x.xx)" (for gated Unknown rows the target is the leading candidate class);
+(2) context rules: outbreak-front / persistent-cluster membership, 30-day repeat history or sudden
+onset, nearest facility name and distance (or "No mapped industrial facility within 25 km"),
+night-time acquisition with local time, FIRMS static-source / offshore flags, the Unknown gate reason
+and rule-prior agreement; (3) radiometric fallbacks so `--no-evidence` runs still yield three sentences.
+The phrasing deliberately differs from the sentences `backend/app.py` composes in
+`/hotspots/{id}/explanation`, which appends these strings after its own.
+
+Refresh: `python src/run_pipeline.py --reuse-model` then restart uvicorn (records are read once at
+import). The committed `data/hotspots.json` is a snapshot whose `run_id` is in its metadata.
 
 ---
 
@@ -493,3 +577,9 @@ The full summary of every run is stored in `data/pipeline_summary.json` and in t
   lower confidence or gated to Unknown. Feed at least 30 days of prior data when scoring new detections.
 * The SQLite export is I/O-bound (3.4 GB for the five-year archive); on a USB flash drive it takes about
   4 min, on an NVMe SSD well under 1 min. Use `--years` for lighter runs.
+* The console's thermal-evidence thresholds (150 / 60 MW FRP, 1100 / 900 K brightness) were tuned to the
+  mock fixture; real VIIRS FRP is typically 1-20 MW and I-4 brightness saturates at 367 K, so the
+  frontend's thermal axis reads "weak" for most genuine fires. The pipeline's own evidence sentences and
+  the risk score use the real scale.
+* `data/hotspots.json` is a capped 3,000-record snapshot of the latest 7-day window; console aggregates
+  describe that snapshot, not the full archive in `data/hotspots.db`.

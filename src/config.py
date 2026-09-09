@@ -23,6 +23,7 @@ FLARE_GPKG: Path = CACHE_DIR / "flare_catalog.gpkg"
 SQLITE_DB: Path = DATA_DIR / "hotspots.db"
 GEOJSON_OUT: Path = DATA_DIR / "latest_hotspots.geojson"
 CLUSTERS_GEOJSON_OUT: Path = DATA_DIR / "latest_clusters.geojson"
+CONSOLE_JSON_OUT: Path = DATA_DIR / "hotspots.json"      # operator-console schema, read by backend/app.py
 SUMMARY_JSON: Path = DATA_DIR / "pipeline_summary.json"
 MODEL_PATH: Path = MODELS_DIR / "fire_classifier.pkl"
 
@@ -81,6 +82,13 @@ DBSCAN_MIN_SAMPLES: int = 3
 OUTBREAK_MIN_COUNT: int = 5
 OUTBREAK_MAX_MEAN_PERSISTENCE_DAYS: float = 1.0
 PERSISTENT_CLUSTER_MIN_MEAN_PERSISTENCE_DAYS: float = 3.0
+
+# --------------------------------------------------------------------------- #
+# Console export (data/hotspots.json)
+# --------------------------------------------------------------------------- #
+CONSOLE_MAX_RECORDS: int = 3000            # cap so the Leaflet console renders every record as a marker
+CONSOLE_MIN_PER_CLASS: int = 40            # floor per class before filling by priority
+CONSOLE_FACILITY_CONTEXT_KM: float = 25.0  # nearest_facility_type is null beyond this distance
 
 # ESA WorldCover class codes (subset used by the offline estimator)
 LAND_COVER_NAMES: dict[int, str] = {

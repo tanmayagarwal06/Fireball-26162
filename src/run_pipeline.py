@@ -1,8 +1,9 @@
-"""End-to-end orchestration: FIRMS CSVs -> enriched SQLite + GeoJSON.
+"""End-to-end orchestration: FIRMS CSVs -> enriched SQLite + GeoJSON + console JSON.
 
 Usage (from the repository root)::
 
     python src/run_pipeline.py                       # full archive in data/raw
+    python src/run_pipeline.py --reuse-model         # refresh outputs without retraining
     python src/run_pipeline.py --years 2024          # one year
     python src/run_pipeline.py --quick               # ~5 % sample, fast smoke run
     python src/run_pipeline.py --backend lightgbm    # CPU LightGBM instead of XGBoost
@@ -13,14 +14,15 @@ Stages
     2. features         src.pipeline.feature_engineer (+ spatial_reference)
     3. classify         src.ml.classifier (0.60 confidence gate -> class 5)
     4. cluster          src.ml.anomaly_detector (Haversine DBSCAN)
-    5. export           SQLite (data/hotspots.db) + GeoJSON (data/latest_hotspots.geojson)
+    5. export           SQLite (data/hotspots.db), GeoJSON (data/latest_hotspots.geojson,
+                        data/latest_clusters.geojson) and the operator-console export
+                        data/hotspots.json (src.export.console_export) read by backend/app.py
 """
 from __future__ import annotations
 
 import argparse
 import json
 import logging
-import math
 import platform
 import sqlite3
 import sys
@@ -40,6 +42,9 @@ from src.config import (  # noqa: E402
     CLASS_LABELS,
     CLUSTERS_GEOJSON_OUT,
     CONFIDENCE_THRESHOLD,
+    CONSOLE_JSON_OUT,
+    CONSOLE_MAX_RECORDS,
+    CONSOLE_MIN_PER_CLASS,
     DBSCAN_EPS_KM,
     DBSCAN_MIN_SAMPLES,
     GEOJSON_OUT,
@@ -51,6 +56,8 @@ from src.config import (  # noqa: E402
     UNKNOWN_CLASS,
     WORLDCOVER_DIR,
 )
+from src.export import json_safe  # noqa: E402
+from src.export.console_export import build_console_records, write_console_json  # noqa: E402
 from src.ml.anomaly_detector import run_anomaly_detection  # noqa: E402
 from src.ml.classifier import FireClassifier, assign_rule_labels, flare_catalog_validation  # noqa: E402
 from src.pipeline.cleaner import clean  # noqa: E402
@@ -190,23 +197,18 @@ def write_sqlite(df: pd.DataFrame, clusters: pd.DataFrame, run_meta: dict, db_pa
     return info
 
 
-def _json_safe(v):
-    if v is None:
-        return None
-    if isinstance(v, (np.integer,)):
-        return int(v)
-    if isinstance(v, (np.floating, float)):
-        return None if (isinstance(v, float) and math.isnan(v)) or (isinstance(v, np.floating) and np.isnan(v)) else round(float(v), 4)
-    if isinstance(v, (np.bool_, bool)):
-        return bool(v)
-    if isinstance(v, (pd.Timestamp, datetime)):
-        return v.strftime("%Y-%m-%dT%H:%M:%SZ")
-    return str(v) if not isinstance(v, (int, str)) else v
+_json_safe = json_safe   # backwards-compatible alias (implementation lives in src.export)
 
 
-def select_latest(df: pd.DataFrame, days: int, max_features: int) -> pd.DataFrame:
-    """Most recent ``days`` of detections, capped to ``max_features`` (priority:
-    non-Unknown classes and anomaly-flagged clusters first, then FRP)."""
+def select_latest(df: pd.DataFrame, days: int, max_features: int, min_per_class: int = 0) -> pd.DataFrame:
+    """Most recent ``days`` of detections, capped to ``max_features``.
+
+    Priority: anomaly-flagged clusters first (outbreak fronts, then persistent
+    industrial clusters), then non-Unknown classes, then FRP. With
+    ``min_per_class > 0`` every predicted class first receives up to that many
+    of its highest-priority rows so rare classes (Industrial fire, Unknown)
+    survive the cap; the remainder is filled from the global ordering.
+    """
     if len(df) == 0:
         return df
     t_max = df["datetime_utc"].max()
@@ -218,7 +220,18 @@ def select_latest(df: pd.DataFrame, days: int, max_features: int) -> pd.DataFram
             + (latest["predicted_class"] != UNKNOWN_CLASS).astype(int) * 2
             + latest["frp"].rank(pct=True)
         )
-        latest = latest.loc[priority.sort_values(ascending=False).index[:max_features]]
+        ordered = priority.sort_values(ascending=False).index
+        chosen: list = []
+        if min_per_class > 0:
+            classes = latest["predicted_class"].reindex(ordered)
+            for cls in sorted(classes.unique()):
+                chosen.extend(list(classes.index[classes == cls][:min_per_class]))
+            chosen = chosen[:max_features]
+        taken = set(chosen)
+        remaining = max_features - len(chosen)
+        if remaining > 0:
+            chosen.extend([i for i in ordered if i not in taken][:remaining])
+        latest = latest.loc[chosen]
     return latest.sort_values("datetime_utc")
 
 
@@ -360,6 +373,9 @@ def print_summary(summary: dict) -> None:
         f" SQLite            : {summary['outputs']['sqlite']['path']}  ({summary['outputs']['sqlite']['rows']:,} rows, {summary['outputs']['sqlite']['size_mb']} MB)",
         f" GeoJSON           : {summary['outputs']['geojson']['path']}  ({summary['outputs']['geojson']['features']:,} features, last {summary['geojson_days']} days)",
         f" Cluster GeoJSON   : {summary['outputs']['clusters_geojson']['path']}  ({summary['outputs']['clusters_geojson']['features']:,} hull polygons)",
+        (f" Console JSON      : {summary['outputs']['console_json']['path']}  ({summary['outputs']['console_json']['records']:,} records, "
+         f"cap {summary.get('console', {}).get('max_records', '-')}, of {summary.get('console', {}).get('candidates_in_window', 0):,} in window)")
+        if summary.get("outputs", {}).get("console_json") else " Console JSON      : skipped (--no-console-json)",
         f" Model             : {summary['outputs']['model']}",
         " Stage timings (s) : " + ", ".join(f"{k}={v}" for k, v in summary["timings"].items()),
         "=" * 78,
@@ -392,6 +408,13 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--geojson", type=Path, default=GEOJSON_OUT)
     p.add_argument("--clusters-geojson", type=Path, default=CLUSTERS_GEOJSON_OUT,
                    help="convex-hull polygons of the clusters in the GeoJSON window")
+    p.add_argument("--console-json", type=Path, default=CONSOLE_JSON_OUT,
+                   help="operator-console export (mock/hotspots.json schema) read by backend/app.py")
+    p.add_argument("--console-max-records", type=int, default=CONSOLE_MAX_RECORDS,
+                   help="cap on console records from the GeoJSON window")
+    p.add_argument("--console-min-per-class", type=int, default=CONSOLE_MIN_PER_CLASS,
+                   help="per-class floor applied before filling the console cap by priority (0 disables)")
+    p.add_argument("--no-console-json", action="store_true", help="skip the console export")
     p.add_argument("--summary-json", type=Path, default=SUMMARY_JSON)
     p.add_argument("--model-path", type=Path, default=MODEL_PATH)
     p.add_argument("--worldcover-dir", type=Path, default=WORLDCOVER_DIR)
@@ -487,10 +510,31 @@ def main(argv=None) -> dict:
     latest = select_latest(df, args.geojson_days, args.geojson_max_features)
     geojson_info = write_geojson(latest, clusters, args.geojson, run_meta)
     clusters_geojson_info = write_cluster_geojson(latest, clusters, args.clusters_geojson, run_meta)
+    console_info = None
+    if not args.no_console_json:
+        window = df[df["datetime_utc"] >= df["datetime_utc"].max() - pd.Timedelta(days=args.geojson_days)]
+        console_df = select_latest(df, args.geojson_days, args.console_max_records, args.console_min_per_class)
+        records = build_console_records(console_df)
+        console_info = write_console_json(records, args.console_json, {
+            "generated_utc": run_meta["run_utc"],
+            "run_id": run_meta["run_id"],
+            "window_days": args.geojson_days,
+            "window_start_utc": console_df["datetime_utc"].min() if len(console_df) else None,
+            "window_end_utc": console_df["datetime_utc"].max() if len(console_df) else None,
+            "candidates_in_window": int(len(window)),
+            "cap": args.console_max_records,
+            "min_per_class": args.console_min_per_class,
+            "confidence_threshold": args.threshold,
+            "source_db": str(args.db),
+        })
+        summary["console"] = {"max_records": args.console_max_records, "min_per_class": args.console_min_per_class,
+                              "candidates_in_window": int(len(window)), "records": console_info["records"],
+                              "class_distribution": console_info["class_distribution"]}
     timings["export"] = round(time.time() - t, 1)
     timings["total"] = round(sum(timings.values()), 1)
     summary["outputs"] = {"sqlite": sqlite_info, "geojson": geojson_info, "clusters_geojson": clusters_geojson_info,
-                          "model": str(args.model_path), "summary_json": str(args.summary_json)}
+                          "console_json": console_info, "model": str(args.model_path),
+                          "summary_json": str(args.summary_json)}
     summary["timings"] = timings
     Path(args.summary_json).parent.mkdir(parents=True, exist_ok=True)
     Path(args.summary_json).write_text(json.dumps(summary, indent=2, default=str), encoding="utf-8")
