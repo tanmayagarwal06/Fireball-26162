@@ -437,12 +437,14 @@ def write_console_json(records: list[dict], path: Path, metadata: dict) -> dict:
 # --------------------------------------------------------------------------- #
 # Stand-alone refresh from an existing SQLite database
 # --------------------------------------------------------------------------- #
-def export_from_sqlite(db_path: Path, out_path: Path, days: int = 7, max_records: int | None = None,
-                       min_per_class: int | None = None) -> dict:
-    """Rebuild ``data/hotspots.json`` from ``hotspots_enriched`` without re-running the pipeline.
+def records_from_sqlite(db_path: Path, days: int = 7, max_records: int | None = None,
+                        min_per_class: int | None = None) -> tuple[list[dict], dict]:
+    """Console records for the trailing ``days`` window of ``hotspots_enriched``.
 
-    Reads only the trailing ``days`` window (plus the run metadata) so it takes
-    seconds even on the multi-million-row archive database.
+    Returns ``(records, metadata)``. Reads only the window (plus the run
+    metadata) so it takes well under a second even on the multi-million-row
+    archive database. Used by :func:`export_from_sqlite` and by the FastAPI
+    backend when it serves straight from the database.
     """
     import sqlite3
     from src.config import CONSOLE_MAX_RECORDS, CONSOLE_MIN_PER_CLASS
@@ -467,7 +469,7 @@ def export_from_sqlite(db_path: Path, out_path: Path, days: int = 7, max_records
     for col in ("is_outbreak_front", "is_persistent_cluster"):
         df[col] = df[col].astype(bool)
     window_n = len(df)
-    sel = select_latest(df, days, max_records, min_per_class)
+    sel = select_latest(df, days, max_records, min_per_class, stratify=True)
     records = build_console_records(sel)
     run_id, run_utc = (run[0], run[1]) if run else ("unknown", None)
     threshold = None
@@ -476,19 +478,27 @@ def export_from_sqlite(db_path: Path, out_path: Path, days: int = 7, max_records
             threshold = json.loads(run[2]).get("confidence_threshold")
         except (ValueError, AttributeError):
             threshold = None
-    return write_console_json(records, out_path, {
+    metadata = {
         "generated_utc": pd.Timestamp.now("UTC").strftime("%Y-%m-%dT%H:%M:%SZ"),
         "run_id": run_id,
         "pipeline_run_utc": run_utc,
         "window_days": days,
-        "window_start_utc": sel["datetime_utc"].min() if len(sel) else None,
-        "window_end_utc": sel["datetime_utc"].max() if len(sel) else None,
+        "window_start_utc": json_safe(sel["datetime_utc"].min()) if len(sel) else None,
+        "window_end_utc": json_safe(sel["datetime_utc"].max()) if len(sel) else None,
         "candidates_in_window": int(window_n),
         "cap": max_records,
         "min_per_class": min_per_class,
         "confidence_threshold": threshold if threshold is not None else CONFIDENCE_THRESHOLD,
         "source_db": str(db_path),
-    })
+    }
+    return records, metadata
+
+
+def export_from_sqlite(db_path: Path, out_path: Path, days: int = 7, max_records: int | None = None,
+                       min_per_class: int | None = None) -> dict:
+    """Rebuild ``data/hotspots.json`` from ``hotspots_enriched`` without re-running the pipeline."""
+    records, metadata = records_from_sqlite(db_path, days, max_records, min_per_class)
+    return write_console_json(records, out_path, metadata)
 
 
 def main(argv=None) -> None:

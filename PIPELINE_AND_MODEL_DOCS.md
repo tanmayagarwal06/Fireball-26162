@@ -212,10 +212,13 @@ directly.
 
 ### 2.6 Integration notes for the FastAPI backend
 
-`backend/app.py` serves `data/hotspots.json` when it exists and `mock/hotspots.json` otherwise. The
-mapping below is what `src/export/console_export.py` (section 2.7) implements to turn pipeline columns
-into that console schema; it also applies to anyone reading `data/hotspots.db` or the GeoJSON
-`properties` directly. No API route had to change.
+`backend/app.py` picks one of three sources at startup (`HOTSPOTS_SOURCE=auto|json|db|mock`, default
+`auto`): `data/hotspots.json` (the committed console export), then `data/hotspots.db` (served through the
+same record builder, restricted to the latest `HOTSPOTS_WINDOW_DAYS` = 7 days and
+`HOTSPOTS_MAX_RECORDS` = 3,000 records, so the 3.5 GB archive is never loaded whole), then
+`mock/hotspots.json`. All three share the console schema, so no API route had to change. The mapping
+below is what `src/export/console_export.py` (section 2.7) implements to turn pipeline columns into
+that schema; it also applies to anyone reading the SQLite table or the GeoJSON `properties` directly.
 
 | Mock field | Pipeline column | Note |
 |---|---|---|
@@ -240,10 +243,13 @@ into that console schema; it also applies to anyone reading `data/hotspots.db` o
 ### 2.7 Console export (`data/hotspots.json`)
 
 `src/export/console_export.py` writes the operator-console dataset the backend loads at startup. It
-selects the latest `--geojson-days` (7) days of detections, caps them at `--console-max-records`
-(3,000, so the Leaflet console can render one marker per record) after reserving up to
-`--console-min-per-class` (40) highest-priority rows per class so rare classes (Industrial fire,
-Unknown) survive the cap, and maps every row onto the mock record shape.
+selects the latest `--geojson-days` (7) days of detections and caps them at `--console-max-records`
+(3,000, so the Leaflet console can render one marker per record). The cap is **stratified by class**:
+each class receives a quota proportional to its share of the window, never below
+`--console-min-per-class` (40) so rare classes (Industrial fire, Unknown) stay visible, and within a
+class the highest-priority rows (outbreak fronts, persistent industrial clusters, then FRP) are kept.
+The snapshot therefore mirrors the window's class mix instead of being dominated by whichever class
+carries the most flagged clusters. Every row is then mapped onto the mock record shape.
 
 **File shape**
 
@@ -355,12 +361,30 @@ NRT feeds that lack the attribute.
 
 ### 3.2 Model
 
-`FireClassifier` wraps an `xgboost.XGBClassifier` (`multi:softprob`, `tree_method="hist"`, 200 trees,
-depth 7, learning rate 0.1, subsample / colsample 0.8) or an `lightgbm.LGBMClassifier` (`multiclass`,
-`class_weight="balanced"`). Class imbalance is handled with balanced sample weights
-$w_c = N / (K \cdot n_c)$. Training uses a stratified cap of 250,000 rule-labelled rows per class with a
-20 % hold-out. XGBoost trains and computes TreeSHAP on CUDA when a GPU is available (`--device auto`);
-the pickled model is re-targeted to CPU automatically when loaded on a machine without CUDA.
+`FireClassifier` wraps an `xgboost.XGBClassifier` (`multi:softprob`, `tree_method="hist"`, 150 trees,
+depth 6, learning rate 0.1, subsample / colsample 0.8, `min_child_weight` 25, `reg_lambda` 2, `gamma`
+0.5) or an `lightgbm.LGBMClassifier` (`multiclass`, `class_weight="balanced"`). Class imbalance is
+handled with balanced sample weights $w_c = N / (K \cdot n_c)$. Training uses a stratified cap of
+250,000 rule-labelled rows per class with a 20 % hold-out. XGBoost trains and computes TreeSHAP on
+CUDA when a GPU is available (`--device auto`); the pickled model is re-targeted to CPU automatically
+when loaded on a machine without CUDA.
+
+**Uncertainty-aware training.** The rule labels are deterministic functions of the features, so a
+plain fit memorises the thresholds and emits 0 / 1 posteriors everywhere, which makes the confidence
+gate and the per-class probabilities meaningless. The fit therefore sees each training row plus
+`--augment-copies` (default 2) copies with realistic measurement noise and the *same* label
+(`perturb_features`): FRP x lognormal(σ = 0.25), I-4 brightness ± 3 K, density / prior-detection
+counts x lognormal(σ = 0.20), each persistence window ± 1 day with probability 0.3, industrial
+distance x lognormal(σ = 0.15), land-cover class swapped with probability 0.08, local hour ± 0.5 h.
+The model learns that rule boundaries are fuzzy: clear-cut detections stay confident, boundary cases
+get intermediate probabilities and a real chance of being gated to Unknown. On the 2020-2024 archive
+this moves the share of records with max probability > 0.99 from ~96 % to ~75 % while leaving the
+class mix and the flare / FIRMS-type validation essentially unchanged.
+
+**Do not commit a model trained on a subset.** Persistence features need the full multi-year archive;
+a model fitted on a few hundred thousand rows sees no repeat history, finds no persistent sources and
+classifies almost nothing as Gas flare. The runner logs a warning (and records `subset_warning` in the
+training report) when fewer than one million rows are processed.
 
 Feature vector (25 inputs): `brightness, bright_t31, brightness_contrast, frp, frp_density, scan, track,
 confidence_numeric, is_night, local_hour, month, doy_sin, doy_cos, persistence_1d, persistence_3d,
@@ -485,12 +509,16 @@ Priority order per point:
 1. **Raster** - if any `*.tif` exists in `data/cache/worldcover/`, ESA WorldCover codes are sampled with
    `rasterio` (vectorised row/col lookup, 2048-row window reads; no-data cells fall through).
 2. **Built-up (50)** - inside an industrial polygon or within a 1.5 km halo of one.
-3. **Tree cover (10)** - inside one of nine embedded forest-belt polygons: Western Ghats,
-   Satpura-Maikal-Bastar, Vindhya-Melghat, Eastern Ghats / Similipal, Chota Nagpur, Himalayan foothills,
-   Arunachal Himalaya, north-east hill states, Sundarbans.
+3. **Tree cover (10)** - inside one of eleven embedded forest-belt polygons: Western Ghats,
+   Satpura-Kanha-Pench, Bastar-Dandakaranya, Surguja-Korba hills, Vindhya-Melghat, Eastern Ghats /
+   Similipal, Chota Nagpur, Himalayan foothills, Arunachal Himalaya, north-east hill states, Sundarbans.
 4. **Cropland (40)** - the brief's Punjab / Haryana / western UP box (28-32 N, 74-80 E) plus the
-   Sriganganagar canal belt, the middle and lower Gangetic plain, the Krishna-Godavari and Cauvery deltas
-   and the Brahmaputra valley.
+   Sriganganagar canal belt, the middle and lower Gangetic plain, the lower Bengal plain, the
+   Krishna-Godavari and Cauvery deltas, the Brahmaputra valley, and the main agricultural plateaus and
+   plains: Deccan interior, Gujarat plains / Saurashtra, Malwa, Tamil Nadu plains, Andhra coast, Odisha
+   and Bengal coast, Chhattisgarh plain, Mahanadi basin. India is roughly 55 % cropland by area, so
+   leaving these regions on the grassland default produced systematic "Agricultural burning on
+   grassland" conflicts in the console.
 5. **Bare / sparse (60)** - Thar desert core, Rann of Kutch, Ladakh.
 6. **Default (30)** - grassland / shrubland for everything unmapped.
 
@@ -509,6 +537,16 @@ training labels, so the reported metrics are not circular by construction:
 * `recall_lenient_flare_or_persistent` - same, accepting Persistent thermal source;
 * `precision_proxy_in_flare_zone` - share of Gas-flare predictions that lie at a catalog site or in a
   flare-type industrial zone.
+
+### 5.3b FIRMS `type` agreement (independent check)
+
+The FIRMS standard product tags every pixel with `type` (0 presumed vegetation fire, 2 other static
+land source, 3 offshore). The pipeline never feeds it to the model (NRT feeds lack it; it only
+corroborates one rule), so agreement between predictions and NASA's own tag is an independent sanity
+check reported in every run summary (`firms_type_agreement`): the share of static sources predicted as
+Gas flare / Persistent thermal source, and the share of vegetation fires predicted as Wildfire /
+Agricultural burning. The summary also prints a `confidence_profile` (median max-probability, share
+above 0.99, share in the 0.60-0.90 band, share gated) so over-confidence is visible at a glance.
 
 ### 5.4 Failure modes handled
 
@@ -531,37 +569,51 @@ flash drive.
 
 | Stage | Result | Time |
 |---|---|---|
-| Clean | 6,020,802 raw rows -> 5,966,590 (390 filtered, 53,822 near-duplicates merged) | 23 s |
-| Features | 41 columns; 166 M persistence pairs, 74 M density pairs | 44 s |
-| Classify | 630,806 rule-labelled training rows (stratified cap), 25 features, SHAP evidence for every row | 78 s |
-| Cluster | 485,341 daily DBSCAN clusters; 3.93 M clustered hotspots, 2.04 M singletons | 36 s |
-| Export | SQLite 3.4 GB (56 columns + 4 indexes), GeoJSON 12.8 MB (14,351 features, last 7 days), 1,218 cluster hulls | 227 s (I/O bound) |
-| **Total** | | **6.8 min** |
+| Clean | 6,020,802 raw rows -> 5,966,590 (390 filtered, 53,822 near-duplicates merged) | 31 s |
+| Features | 41 columns; 166 M persistence pairs, 74 M density pairs | 55 s |
+| Classify | 630,806 rule-labelled training rows (stratified cap) x 3 with measurement-noise copies, 25 features, SHAP evidence for every row | 124 s |
+| Cluster | 485,341 daily DBSCAN clusters; 3.93 M clustered hotspots, 2.04 M singletons | 43 s |
+| Export | SQLite 3.5 GB (56 columns + 4 indexes), GeoJSON 13 MB (14,351 features, last 7 days), 1,218 cluster hulls, console JSON (3,000 records) | 257 s (I/O bound) |
+| **Total** | | **8.5 min** |
 
-Rule-prior coverage: 4.45 M rows (74.6 %) receive a prior label, 1.51 M (25.4 %) are left to the model.
+Rule-prior coverage: 4.47 M rows (74.8 %) receive a prior label, 1.50 M (25.2 %) are left to the model.
 
 Class distribution after the 0.60 gate:
 
 | Class | Hotspots | Share |
 |---|---|---|
-| 0 Wildfire | 2,471,565 | 41.42 % |
-| 1 Agricultural burning | 2,540,212 | 42.57 % |
-| 2 Industrial fire | 2,871 | 0.05 % |
-| 3 Gas flare | 52,479 | 0.88 % |
-| 4 Persistent thermal source | 851,697 | 14.27 % |
-| 5 Unknown | 47,766 | 0.80 % |
+| 0 Wildfire | 2,608,929 | 43.73 % |
+| 1 Agricultural burning | 2,321,974 | 38.92 % |
+| 2 Industrial fire | 6,843 | 0.11 % |
+| 3 Gas flare | 49,409 | 0.83 % |
+| 4 Persistent thermal source | 926,472 | 15.53 % |
+| 5 Unknown | 52,963 | 0.89 % |
 
-Hold-out agreement with the rule priors: accuracy 1.000, macro-F1 0.998 (Industrial fire F1 0.990, all
-other classes 1.000). Gain-based feature importance: `is_flare_zone` 0.30, `frp` 0.14,
-`land_cover_class` 0.12, `persistence_30d` 0.09, `persistence_7d` 0.06, `distance_to_industry_km` 0.06,
-`is_night` 0.05.
+Hold-out agreement with the rule priors: accuracy 0.999, macro-F1 0.995 (Industrial fire 0.988, Gas
+flare 0.987, others >= 0.998). Gain-based feature importance: `is_flare_zone` 0.38,
+`land_cover_class` 0.15, `persistence_30d` 0.11, `persistence_7d` 0.07, `frp` 0.07, `is_night` 0.06,
+`distance_to_industry_km` 0.05.
 
-Independent flare-catalog check: 25,641 persistent detections fall within 14 of the 32 embedded flare
-sites; 95.0 % of them are classified Gas flare (100 % Gas flare or Persistent thermal source), and 100 %
-of all Gas-flare predictions lie in a catalog site or flare-type industrial zone.
+Confidence profile (uncertainty-aware training): median max-probability 0.997; 74.4 % of records above
+0.99, 2.0 % in the 0.60-0.90 band, 0.9 % gated to Unknown.
 
-Anomaly detection: 122,378 clusters flagged as outbreak fronts (largest: 2,301 detections, 1,954 km^2
+Independent checks:
+
+* Flare catalog: 25,641 persistent detections fall within 14 of the 32 embedded flare sites; 96.5 % of
+  them are classified Gas flare (98.7 % Gas flare or Persistent thermal source), and 100 % of all
+  Gas-flare predictions lie in a catalog site or flare-type industrial zone.
+* FIRMS `type` attribute: 96.8 % of NASA's 666,990 "static land source" pixels are classified Gas flare
+  or Persistent thermal source (2.0 % vegetation classes, 1.2 % Unknown); 93.0 % of its 5.29 M
+  "vegetation fire" pixels are classified Wildfire or Agricultural burning (6.1 % flare / persistent,
+  0.8 % Unknown).
+
+Anomaly detection: 96,508 clusters flagged as outbreak fronts (largest: 2,301 detections, 1,954 km^2
 hull, Satpura forest belt on 2020-04-16) and 33,417 persistent industrial clusters.
+
+Console export (stratified by class share of the 14,351-detection window, 40-record floor per class):
+Agricultural burning 1,427, Persistent thermal source 1,008, Wildfire 463, Gas flare 54, Unknown 40,
+Industrial fire 8; land cover Cropland 1,213 / Built-up 1,062 / Tree cover 400 / Grassland 311 /
+Bare 14.
 
 The full summary of every run is stored in `data/pipeline_summary.json` and in the `pipeline_runs` table.
 
@@ -570,7 +622,7 @@ The full summary of every run is stored in `data/pipeline_summary.json` and in t
 ## 7. Known limitations
 
 * Labels are rule-derived (weak supervision); validation accuracy therefore measures agreement with the
-  priors, not with field truth. The flare-catalog metrics are the only independent check.
+  priors, not with field truth. The flare-catalog and FIRMS-`type` metrics are the independent checks.
 * The heuristic land-cover map is polygon-coarse; dropping ESA WorldCover tiles into
   `data/cache/worldcover/` immediately improves the Wildfire / Agricultural split.
 * Industrial polygons are circular buffers; brick-kiln belts and small sponge-iron units outside the

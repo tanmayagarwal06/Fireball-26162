@@ -155,6 +155,62 @@ def assign_rule_labels(df: pd.DataFrame) -> np.ndarray:
 
 
 # --------------------------------------------------------------------------- #
+# Measurement-noise augmentation
+# --------------------------------------------------------------------------- #
+# Magnitudes reflect the real uncertainty of each input: VIIRS FRP retrievals
+# carry ~25-30 % error, I-4 brightness a few K, persistence counts lose days to
+# cloud cover, the industrial layer is a set of circular buffers with ~15 %
+# radius uncertainty and the land-cover map is a coarse heuristic.
+PERTURBATION = {
+    "frp_lognormal_sigma": 0.25,
+    "brightness_sigma_k": 3.0,
+    "count_lognormal_sigma": 0.20,       # hotspot_density, prior_detections_7d, same_day_detections
+    "persistence_flip_prob": 0.30,        # +/- 1 day on each persistence window
+    "distance_lognormal_sigma": 0.15,
+    "land_cover_swap_prob": 0.08,
+    "local_hour_sigma": 0.5,
+}
+_LAND_COVER_ALTERNATIVES = np.array([10, 30, 40, 50], dtype=np.float32)
+
+
+def perturb_features(X: pd.DataFrame, rng: np.random.Generator) -> pd.DataFrame:
+    """Return a copy of ``X`` with realistic measurement noise applied (labels unchanged)."""
+    n = len(X)
+    Z = X.copy()
+    p = PERTURBATION
+
+    def col(name):
+        return Z[name].to_numpy(dtype=np.float32)
+
+    if "frp" in Z:
+        scale = np.exp(rng.normal(0.0, p["frp_lognormal_sigma"], n)).astype(np.float32)
+        Z["frp"] = np.maximum(col("frp") * scale, 0.05)
+        if "frp_density" in Z:
+            Z["frp_density"] = col("frp_density") * scale
+    if "brightness" in Z:
+        Z["brightness"] = col("brightness") + rng.normal(0.0, p["brightness_sigma_k"], n).astype(np.float32)
+        if "brightness_contrast" in Z and "bright_t31" in Z:
+            Z["brightness_contrast"] = col("brightness") - col("bright_t31")
+    for name in ("hotspot_density", "prior_detections_7d", "same_day_detections"):
+        if name in Z:
+            Z[name] = np.rint(col(name) * np.exp(rng.normal(0.0, p["count_lognormal_sigma"], n))).astype(np.float32)
+    for name, cap in (("persistence_1d", 1), ("persistence_3d", 3), ("persistence_7d", 7), ("persistence_30d", 30)):
+        if name in Z:
+            flip = rng.random(n) < p["persistence_flip_prob"]
+            delta = np.where(flip, rng.choice([-1.0, 1.0], n), 0.0).astype(np.float32)
+            Z[name] = np.clip(col(name) + delta, 0, cap)
+    if "distance_to_industry_km" in Z:
+        Z["distance_to_industry_km"] = col("distance_to_industry_km") * np.exp(
+            rng.normal(0.0, p["distance_lognormal_sigma"], n)).astype(np.float32)
+    if "land_cover_class" in Z:
+        swap = rng.random(n) < p["land_cover_swap_prob"]
+        Z["land_cover_class"] = np.where(swap, rng.choice(_LAND_COVER_ALTERNATIVES, n), col("land_cover_class")).astype(np.float32)
+    if "local_hour" in Z:
+        Z["local_hour"] = np.mod(col("local_hour") + rng.normal(0.0, p["local_hour_sigma"], n), 24.0).astype(np.float32)
+    return Z
+
+
+# --------------------------------------------------------------------------- #
 # Classifier wrapper
 # --------------------------------------------------------------------------- #
 def cuda_available() -> bool:
@@ -180,6 +236,8 @@ class FireClassifier:
                      scores. "auto" = exact on CUDA / LightGBM, Saabas-approx on
                      CPU XGBoost (about 10x faster, same feature ranking in
                      the vast majority of rows).
+    augment_copies : number of measurement-noise copies of the training rows
+                     added to the fit (see :func:`perturb_features`); 0 disables.
     """
 
     def __init__(
@@ -187,14 +245,15 @@ class FireClassifier:
         backend: str = "xgboost",
         threshold: float = CONFIDENCE_THRESHOLD,
         rule_prior_weight: float = 0.25,
-        n_estimators: int = 200,
+        n_estimators: int = 150,
         learning_rate: float = 0.1,
-        max_depth: int = 7,
+        max_depth: int = 6,
         num_leaves: int = 31,
         random_state: int = RANDOM_STATE,
         n_jobs: int = -1,
         device: str = "auto",
         evidence_method: str = "auto",
+        augment_copies: int = 2,
     ) -> None:
         if backend not in ("lightgbm", "xgboost"):
             raise ValueError("backend must be 'lightgbm' or 'xgboost'")
@@ -213,6 +272,7 @@ class FireClassifier:
         self.n_jobs = n_jobs
         self.device = device
         self.evidence_method = evidence_method
+        self.augment_copies = int(augment_copies)
         self.device_: Optional[str] = None
         self.model = None
         self.classes_: np.ndarray = np.arange(N_MODEL_CLASSES)
@@ -245,7 +305,7 @@ class FireClassifier:
         return xgb.XGBClassifier(
             objective="multi:softprob", num_class=n_classes, n_estimators=self.n_estimators,
             learning_rate=self.learning_rate, max_depth=self.max_depth, subsample=0.8,
-            colsample_bytree=0.8, min_child_weight=5, reg_lambda=1.0, tree_method="hist",
+            colsample_bytree=0.8, min_child_weight=25, reg_lambda=2.0, gamma=0.5, tree_method="hist",
             device=self.device_, random_state=self.random_state,
             n_jobs=self.n_jobs if self.n_jobs > 0 else None, verbosity=0,
         )
@@ -284,24 +344,43 @@ class FireClassifier:
         y_tr = np.vectorize(class_pos.get)(y_all[tr_idx])
         self.device_ = self._resolve_device()
         model = self._make_model(len(self.classes_))
+
+        # Uncertainty-aware training: the rule labels are deterministic functions
+        # of the features, so a plain fit memorises the thresholds and returns
+        # 0/1 posteriors everywhere. Training on the original rows plus
+        # measurement-noise copies (label unchanged) teaches the model that the
+        # inputs are uncertain, which softens probabilities near rule boundaries
+        # while leaving clear-cut cases confident.
+        X_tr = X_all.iloc[tr_idx]
+        y_fit = y_tr
+        if self.augment_copies > 0:
+            parts = [X_tr] + [perturb_features(X_tr, rng) for _ in range(self.augment_copies)]
+            X_tr = pd.concat(parts, ignore_index=True)
+            y_fit = np.tile(y_tr, self.augment_copies + 1)
         if self.backend == "xgboost":
-            counts = np.bincount(y_tr, minlength=len(self.classes_)).astype(np.float64)
-            w = (len(y_tr) / (len(self.classes_) * np.maximum(counts, 1)))[y_tr]
-            model.fit(X_all.iloc[tr_idx], y_tr, sample_weight=w)
+            counts = np.bincount(y_fit, minlength=len(self.classes_)).astype(np.float64)
+            w = (len(y_fit) / (len(self.classes_) * np.maximum(counts, 1)))[y_fit]
+            model.fit(X_tr, y_fit, sample_weight=w)
         else:
-            model.fit(X_all.iloc[tr_idx], y_tr)
+            model.fit(X_tr, y_fit)
         self.model = model
 
         report = {
             "backend": self.backend,
             "device": self.device_,
             "train_rows": int(len(tr_idx)),
+            "augment_copies": int(self.augment_copies),
+            "fitted_rows": int(len(y_fit)),
             "validation_rows": int(len(val_idx)),
             "labelled_rows_total": int(labelled.size),
             "unlabelled_rows": int(len(df) - labelled.size),
             "label_counts": {CLASS_LABELS[int(c)]: int((y_all[labelled] == c).sum()) for c in self.classes_},
             "train_seconds": round(time.time() - t0, 1),
         }
+        if len(df) < 1_000_000:
+            log.warning("Classifier trained on a %d-row subset; do not commit this model as the reference "
+                        "(persistence features need the full multi-year archive)", len(df))
+            report["subset_warning"] = True
         if len(val_idx):
             from sklearn.metrics import classification_report, confusion_matrix
             p = self._model_proba(X_all.iloc[val_idx])
@@ -451,6 +530,38 @@ class FireClassifier:
             obj.device_ = "cpu"
             log.info("Loaded CUDA-trained model onto CPU")
         return obj
+
+
+# --------------------------------------------------------------------------- #
+# Validation against the FIRMS "type" attribute
+# --------------------------------------------------------------------------- #
+def firms_type_agreement(df: pd.DataFrame, predictions: pd.DataFrame) -> dict:
+    """Agreement between predictions and NASA's own per-pixel ``type`` attribute.
+
+    FIRMS standard products flag each detection as 0 = presumed vegetation
+    fire, 2 = other static land source, 3 = offshore. The attribute is not a
+    model feature (NRT feeds lack it), so it is an independent check:
+    static sources should land in Gas flare / Persistent thermal source and
+    vegetation fires in Wildfire / Agricultural burning.
+    """
+    if "firms_type" not in df.columns:
+        return {"available": False}
+    t = df["firms_type"].values.astype(np.int16)
+    pred = predictions["predicted_class"].values
+    out: dict = {"available": bool((t >= 0).any())}
+    static = t == 2
+    veg = t == 0
+    if static.any():
+        out["static_sources"] = int(static.sum())
+        out["static_as_flare_or_persistent"] = float(np.isin(pred[static], [3, 4]).mean())
+        out["static_as_vegetation_class"] = float(np.isin(pred[static], [0, 1]).mean())
+        out["static_as_unknown"] = float((pred[static] == UNKNOWN_CLASS).mean())
+    if veg.any():
+        out["vegetation_fires"] = int(veg.sum())
+        out["vegetation_as_wildfire_or_agri"] = float(np.isin(pred[veg], [0, 1]).mean())
+        out["vegetation_as_flare_or_persistent"] = float(np.isin(pred[veg], [3, 4]).mean())
+        out["vegetation_as_unknown"] = float((pred[veg] == UNKNOWN_CLASS).mean())
+    return out
 
 
 # --------------------------------------------------------------------------- #

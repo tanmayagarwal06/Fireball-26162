@@ -59,7 +59,12 @@ from src.config import (  # noqa: E402
 from src.export import json_safe  # noqa: E402
 from src.export.console_export import build_console_records, write_console_json  # noqa: E402
 from src.ml.anomaly_detector import run_anomaly_detection  # noqa: E402
-from src.ml.classifier import FireClassifier, assign_rule_labels, flare_catalog_validation  # noqa: E402
+from src.ml.classifier import (  # noqa: E402
+    FireClassifier,
+    assign_rule_labels,
+    firms_type_agreement,
+    flare_catalog_validation,
+)
 from src.pipeline.cleaner import clean  # noqa: E402
 from src.pipeline.feature_engineer import engineer_features  # noqa: E402
 from src.pipeline.spatial_reference import SpatialReference  # noqa: E402
@@ -200,14 +205,20 @@ def write_sqlite(df: pd.DataFrame, clusters: pd.DataFrame, run_meta: dict, db_pa
 _json_safe = json_safe   # backwards-compatible alias (implementation lives in src.export)
 
 
-def select_latest(df: pd.DataFrame, days: int, max_features: int, min_per_class: int = 0) -> pd.DataFrame:
+def select_latest(df: pd.DataFrame, days: int, max_features: int, min_per_class: int = 0,
+                  stratify: bool = False) -> pd.DataFrame:
     """Most recent ``days`` of detections, capped to ``max_features``.
 
     Priority: anomaly-flagged clusters first (outbreak fronts, then persistent
-    industrial clusters), then non-Unknown classes, then FRP. With
-    ``min_per_class > 0`` every predicted class first receives up to that many
-    of its highest-priority rows so rare classes (Industrial fire, Unknown)
-    survive the cap; the remainder is filled from the global ordering.
+    industrial clusters), then non-Unknown classes, then FRP.
+
+    ``min_per_class > 0`` reserves up to that many highest-priority rows per
+    predicted class so rare classes (Industrial fire, Unknown) survive the cap.
+    ``stratify=True`` additionally allocates the cap across classes in
+    proportion to their share of the window (never below the floor), so the
+    selection mirrors the window's class mix instead of being dominated by
+    whichever class carries the most flagged clusters; within a class the
+    priority order still decides which rows are kept.
     """
     if len(df) == 0:
         return df
@@ -221,12 +232,22 @@ def select_latest(df: pd.DataFrame, days: int, max_features: int, min_per_class:
             + latest["frp"].rank(pct=True)
         )
         ordered = priority.sort_values(ascending=False).index
+        classes = latest["predicted_class"].reindex(ordered)
+        counts = classes.value_counts()
+        quotas: dict = {}
+        if stratify:
+            share = counts / counts.sum()
+            quotas = {int(c): int(min(counts[c], max(min_per_class, round(share[c] * max_features)))) for c in counts.index}
+            # trim the largest quotas until the allocation fits the cap
+            while sum(quotas.values()) > max_features:
+                biggest = max(quotas, key=quotas.get)
+                quotas[biggest] -= 1
+        elif min_per_class > 0:
+            quotas = {int(c): int(min(counts[c], min_per_class)) for c in counts.index}
         chosen: list = []
-        if min_per_class > 0:
-            classes = latest["predicted_class"].reindex(ordered)
-            for cls in sorted(classes.unique()):
-                chosen.extend(list(classes.index[classes == cls][:min_per_class]))
-            chosen = chosen[:max_features]
+        for cls, quota in quotas.items():
+            chosen.extend(list(classes.index[classes == cls][:quota]))
+        chosen = chosen[:max_features]
         taken = set(chosen)
         remaining = max_features - len(chosen)
         if remaining > 0:
@@ -359,6 +380,9 @@ def print_summary(summary: dict) -> None:
         pct = 100.0 * n / total if total else 0.0
         lines.append(f"   {cid}  {name:<28} {n:>10,}  {pct:6.2f}%")
     fv = summary["flare_catalog_validation"]
+    tv = summary.get("firms_type_agreement", {})
+    cp = summary.get("confidence_profile", {"max_prob_p50": float("nan"), "share_above_0_99": float("nan"),
+                                            "share_between_0_60_and_0_90": float("nan"), "share_below_0_60": float("nan")})
     lines += [
         "",
         f" Unknown gate      : P_max < {summary['confidence_threshold']:.2f} -> class 5 | gated {summary['unknown_share']:.2%} of rows",
@@ -369,6 +393,11 @@ def print_summary(summary: dict) -> None:
         f"recall strict {fv['recall_strict_gas_flare'] if fv['recall_strict_gas_flare'] is None else round(fv['recall_strict_gas_flare'], 3)} | "
         f"lenient {fv['recall_lenient_flare_or_persistent'] if fv['recall_lenient_flare_or_persistent'] is None else round(fv['recall_lenient_flare_or_persistent'], 3)} | "
         f"precision proxy {fv['precision_proxy_in_flare_zone'] if fv['precision_proxy_in_flare_zone'] is None else round(fv['precision_proxy_in_flare_zone'], 3)}",
+        (f" FIRMS type check  : static sources -> flare/persistent {tv.get('static_as_flare_or_persistent', float('nan')):.3f} "
+         f"(n={tv.get('static_sources', 0):,}) | vegetation fires -> wildfire/agri {tv.get('vegetation_as_wildfire_or_agri', float('nan')):.3f} "
+         f"(n={tv.get('vegetation_fires', 0):,})") if tv.get("available") else " FIRMS type check  : n/a (no type attribute)",
+        (f" Confidence profile: median max-prob {cp['max_prob_p50']:.3f} | >0.99 {cp['share_above_0_99']:.1%} | "
+         f"0.60-0.90 {cp['share_between_0_60_and_0_90']:.1%} | gated {cp['share_below_0_60']:.1%}"),
         "",
         f" SQLite            : {summary['outputs']['sqlite']['path']}  ({summary['outputs']['sqlite']['rows']:,} rows, {summary['outputs']['sqlite']['size_mb']} MB)",
         f" GeoJSON           : {summary['outputs']['geojson']['path']}  ({summary['outputs']['geojson']['features']:,} features, last {summary['geojson_days']} days)",
@@ -398,6 +427,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--threshold", type=float, default=CONFIDENCE_THRESHOLD, help="confidence gate (default 0.60)")
     p.add_argument("--rule-prior-weight", type=float, default=0.25)
     p.add_argument("--max-per-class", type=int, default=250_000, help="training cap per class")
+    p.add_argument("--augment-copies", type=int, default=2,
+                   help="measurement-noise copies of the training rows (0 = plain fit, overconfident)")
     p.add_argument("--no-evidence", action="store_true", help="skip per-row SHAP evidence (faster)")
     p.add_argument("--reuse-model", action="store_true", help="load data/models/fire_classifier.pkl instead of training")
     p.add_argument("--eps-km", type=float, default=DBSCAN_EPS_KM)
@@ -462,7 +493,7 @@ def main(argv=None) -> dict:
         log.info("Reusing trained model from %s (%s/%s)", args.model_path, clf.backend, clf.device_)
     else:
         clf = FireClassifier(backend=args.backend, threshold=args.threshold, rule_prior_weight=args.rule_prior_weight,
-                             device=args.device)
+                             device=args.device, augment_copies=args.augment_copies)
         clf.fit(df, rule_labels, max_per_class=args.max_per_class)
         clf.save(args.model_path)
     pred = clf.predict(df, rule_labels, return_evidence=not args.no_evidence)
@@ -470,6 +501,14 @@ def main(argv=None) -> dict:
     df["land_cover_name"] = df["land_cover_class"].map(LAND_COVER_NAMES).fillna("Unclassified").astype("category")
     timings["classify"] = round(time.time() - t, 1)
     flare_val = flare_catalog_validation(df, pred)
+    type_val = firms_type_agreement(df, pred)
+    probs = pred[[f"prob_class_{i}" for i in range(5)]].to_numpy()
+    top = probs.max(axis=1)
+    confidence_profile = {
+        "max_prob_p10": float(np.percentile(top, 10)), "max_prob_p50": float(np.percentile(top, 50)),
+        "share_above_0_99": float((top > 0.99).mean()), "share_below_0_60": float((top < 0.60).mean()),
+        "share_between_0_60_and_0_90": float(((top >= 0.60) & (top < 0.90)).mean()),
+    }
 
     # 4. cluster ---------------------------------------------------------------
     t = time.time()
@@ -502,6 +541,8 @@ def main(argv=None) -> dict:
         "rule_label_counts": {(CLASS_LABELS[int(k)] if k >= 0 else "unlabelled"): int(v)
                               for k, v in zip(*np.unique(rule_labels, return_counts=True))},
         "flare_catalog_validation": flare_val,
+        "firms_type_agreement": type_val,
+        "confidence_profile": confidence_profile,
         "clusters": cluster_stats,
         "geojson_days": args.geojson_days,
     }
@@ -513,7 +554,8 @@ def main(argv=None) -> dict:
     console_info = None
     if not args.no_console_json:
         window = df[df["datetime_utc"] >= df["datetime_utc"].max() - pd.Timedelta(days=args.geojson_days)]
-        console_df = select_latest(df, args.geojson_days, args.console_max_records, args.console_min_per_class)
+        console_df = select_latest(df, args.geojson_days, args.console_max_records, args.console_min_per_class,
+                                   stratify=True)
         records = build_console_records(console_df)
         console_info = write_console_json(records, args.console_json, {
             "generated_utc": run_meta["run_utc"],
