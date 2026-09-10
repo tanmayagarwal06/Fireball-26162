@@ -2,6 +2,9 @@ from pathlib import Path
 from typing import Optional
 
 import json
+import logging
+import os
+import sys
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -39,276 +42,126 @@ app.add_middleware(
 # ============================================================
 # 2. LOAD HOTSPOT DATA
 # ============================================================
+#
+# Three sources share one record schema (see PIPELINE_AND_MODEL_DOCS.md 2.7):
+#
+#   data/hotspots.json   console export written by src/run_pipeline.py or
+#                        `python -m src.export.console_export` - capped,
+#                        labelled, with risk_score / evidence / probabilities.
+#                        Committed to the repo, so a fresh clone works.
+#   data/hotspots.db     the full pipeline database (git-ignored, ~3.5 GB).
+#                        Served through the same record builder as the export
+#                        (src.export.console_export), restricted to the latest
+#                        window - never loaded whole.
+#   mock/hotspots.json   hand-written fixture, last resort.
+#
+# HOTSPOTS_SOURCE=auto|json|db|mock picks the source (default auto: json,
+# then db, then mock). HOTSPOTS_WINDOW_DAYS / HOTSPOTS_MAX_RECORDS tune the
+# database window (defaults 7 days / 3000 records, matching the export).
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Real ML output
+HOTSPOTS_JSON = BASE_DIR / "data" / "hotspots.json"
 HOTSPOTS_DB = BASE_DIR / "data" / "hotspots.db"
+MOCK_FILE = BASE_DIR / "mock" / "hotspots.json"
+HOTSPOTS_SOURCE = os.environ.get("HOTSPOTS_SOURCE", "auto").strip().lower()
+HOTSPOTS_WINDOW_DAYS = int(os.environ.get("HOTSPOTS_WINDOW_DAYS", "7"))
+HOTSPOTS_MAX_RECORDS = int(os.environ.get("HOTSPOTS_MAX_RECORDS", "3000"))
 
-# Development/demo fallback
-HOTSPOTS_FILE = BASE_DIR / "mock" / "hotspots.json"
+log = logging.getLogger("uvicorn.error")
 
-
-def calculate_risk_score(hotspot):
-    """
-    Derive a deterministic 0-100 risk score from ML/geospatial evidence.
-
-    The ML pipeline itself does not produce risk_score, so the API derives it
-    from thermal intensity, classification confidence, persistence,
-    industrial proximity, outbreak status, and persistent-cluster status.
-    """
-
-    score = 0.0
-
-    # Classification confidence: 0-30 points
-    confidence = hotspot.get("classification_confidence") or 0
-    try:
-        confidence = float(confidence)
-    except (TypeError, ValueError):
-        confidence = 0
-
-    if confidence > 1:
-        confidence = confidence / 100
-
-    score += max(0.0, min(confidence, 1.0)) * 30
-
-    # FRP / thermal intensity: 0-25 points
-    frp = hotspot.get("frp") or 0
-    try:
-        frp = float(frp)
-    except (TypeError, ValueError):
-        frp = 0
-
-    score += min(frp / 100.0, 1.0) * 25
-
-    # Persistence: 0-20 points
-    persistence = get_persistence(hotspot)
-    score += min(persistence / 7.0, 1.0) * 20
-
-    # Industrial proximity: 0-15 points
-    distance = hotspot.get("distance_to_industry_km")
-
-    try:
-        distance = float(distance) if distance is not None else None
-    except (TypeError, ValueError):
-        distance = None
-
-    if distance is not None:
-        if distance <= 0.5:
-            score += 15
-        elif distance <= 2:
-            score += 10
-        elif distance <= 5:
-            score += 5
-
-    # Cluster/outbreak evidence: 0-10 points
-    if hotspot.get("is_outbreak_front"):
-        score += 5
-
-    if hotspot.get("is_persistent_cluster"):
-        score += 5
-
-    return int(round(max(0, min(score, 100))))
+# Filled by load_hotspots(); useful when debugging which file is being served.
+DATA_SOURCE = {"kind": None, "path": None, "metadata": {}}
 
 
-def parse_evidence_scores(value):
-    """
-    Convert the SQLite evidence_scores field into a JSON-compatible value.
-    """
-
-    if value is None:
-        return []
-
-    if isinstance(value, (list, dict)):
-        return value
-
-    if isinstance(value, str):
-        try:
-            parsed = json.loads(value)
-            return parsed
-        except (json.JSONDecodeError, TypeError):
-            return [value]
-
-    return []
-
-
-def load_hotspots_from_db():
-    """
-    Load enriched hotspot records produced by the ML pipeline.
-    """
-
-    import sqlite3
-
-    if not HOTSPOTS_DB.exists():
-        raise FileNotFoundError(
-            f"Could not find ML database at: {HOTSPOTS_DB}"
-        )
-
-    connection = sqlite3.connect(HOTSPOTS_DB)
-    connection.row_factory = sqlite3.Row
-
-    try:
-        rows = connection.execute("""
-            SELECT
-                hotspot_id,
-                latitude,
-                longitude,
-                acq_date,
-                acq_time,
-                datetime_utc,
-                brightness,
-                scan,
-                track,
-                satellite,
-                instrument,
-                confidence,
-                confidence_numeric,
-                bright_t31,
-                frp,
-                daynight,
-                firms_type,
-                source_file,
-
-                persistence_1d,
-                persistence_3d,
-                persistence_7d,
-                persistence_30d,
-                prior_detections_7d,
-                same_day_detections,
-                hotspot_density,
-
-                distance_to_industry_km,
-                inside_industrial_polygon,
-                nearest_facility_type,
-                nearest_facility_name,
-                nearest_facility_id,
-
-                land_cover_class,
-                land_cover_name,
-
-                brightness_contrast,
-                frp_density,
-                is_night,
-                local_hour,
-                month,
-
-                distance_to_flare_site_km,
-                near_flare_site,
-                flare_site_id,
-
-                predicted_class,
-                predicted_label,
-                confidence_score,
-                rule_prior_class,
-                evidence_scores,
-
-                prob_class_0,
-                prob_class_1,
-                prob_class_2,
-                prob_class_3,
-                prob_class_4,
-
-                cluster_id,
-                cluster_fire_count,
-                total_cluster_frp,
-                cluster_convex_hull_area_km2,
-                is_outbreak_front,
-                is_persistent_cluster
-
-            FROM hotspots_enriched
-        """).fetchall()
-
-        hotspots = []
-
-        for row in rows:
-            h = dict(row)
-
-            # ----------------------------------------------------
-            # Adapt ML/database schema to existing API schema
-            # ----------------------------------------------------
-
-            h["id"] = h.get("hotspot_id")
-            h["lat"] = h.get("latitude")
-            h["lon"] = h.get("longitude")
-
-            h["classification"] = h.get("predicted_label")
-            h["classification_confidence"] = h.get("confidence_score")
-
-            # Frontend/explanation compatibility
-            h["brightness_temperature"] = h.get("bright_t31")
-
-            # Evidence Fusion / explainability
-            h["evidence"] = parse_evidence_scores(
-                h.get("evidence_scores")
-            )
-
-            # Risk is derived by the API because the ML pipeline
-            # does not directly store a risk_score.
-            h["risk_score"] = calculate_risk_score(h)
-
-            # Keep compatibility with frontend naming
-            h["latitude"] = h.get("latitude")
-            h["longitude"] = h.get("longitude")
-
-            hotspots.append(h)
-
-        return hotspots
-
-    finally:
-        connection.close()
-
-
-def load_hotspots_from_mock():
-    """
-    Load the existing mock dataset when the real ML database is unavailable.
-    """
-
-    if not HOTSPOTS_FILE.exists():
-        raise FileNotFoundError(
-            f"Could not find fallback hotspots.json at: {HOTSPOTS_FILE}"
-        )
-
-    with open(HOTSPOTS_FILE, "r", encoding="utf-8") as file:
-        data = json.load(file)
+def _records_from_payload(data, origin):
+    """Accept a bare list or an object with a 'hotspots' list."""
 
     if isinstance(data, list):
-        return data
+        return data, {}
 
     if isinstance(data, dict) and "hotspots" in data:
-        return data["hotspots"]
+        return data["hotspots"], data.get("metadata") or {}
 
     raise ValueError(
-        "hotspots.json must contain a list of hotspots "
+        f"{origin} must contain a list of hotspots "
         "or an object containing a 'hotspots' list."
     )
 
 
+def load_hotspots_from_json():
+    """The pipeline's console export."""
+
+    with open(HOTSPOTS_JSON, "r", encoding="utf-8") as file:
+        return _records_from_payload(json.load(file), HOTSPOTS_JSON.name)
+
+
+def load_hotspots_from_db():
+    """
+    Serve the latest window of the pipeline database through the same
+    record builder that produces data/hotspots.json, so the API schema,
+    labels, risk_score, evidence and class_probabilities are identical to
+    the export. Requires the pipeline's Python dependencies (pandas, numpy).
+    """
+
+    if str(BASE_DIR) not in sys.path:
+        sys.path.insert(0, str(BASE_DIR))
+
+    from src.export.console_export import records_from_sqlite
+
+    return records_from_sqlite(
+        HOTSPOTS_DB,
+        days=HOTSPOTS_WINDOW_DAYS,
+        max_records=HOTSPOTS_MAX_RECORDS,
+    )
+
+
+def load_hotspots_from_mock():
+    """The hand-written fixture used before the pipeline existed."""
+
+    with open(MOCK_FILE, "r", encoding="utf-8") as file:
+        return _records_from_payload(json.load(file), MOCK_FILE.name)
+
+
 def load_hotspots():
     """
-    Prefer real ML pipeline output.
-    Fall back to mock data for demo resilience.
+    Pick the data source once at startup. Records are held in memory; restart
+    the server after regenerating the export or the database.
     """
 
-    if HOTSPOTS_DB.exists():
-        print(f"[DATA] Loading ML database: {HOTSPOTS_DB}")
+    order = {
+        "auto": ["json", "db", "mock"],
+        "json": ["json", "mock"],
+        "db": ["db", "mock"],
+        "mock": ["mock"],
+    }.get(HOTSPOTS_SOURCE, ["json", "db", "mock"])
 
+    loaders = {
+        "json": (HOTSPOTS_JSON, load_hotspots_from_json),
+        "db": (HOTSPOTS_DB, load_hotspots_from_db),
+        "mock": (MOCK_FILE, load_hotspots_from_mock),
+    }
+
+    for kind in order:
+        path, loader = loaders[kind]
+        if not path.exists():
+            log.info("[DATA] %s not found at %s", kind, path)
+            continue
         try:
-            records = load_hotspots_from_db()
-            print(f"[DATA] Loaded {len(records):,} hotspots from SQLite")
-            return records
+            records, metadata = loader()
+        except Exception as exc:  # keep the demo alive on any source failure
+            log.warning("[DATA] %s source failed (%s); trying the next source", kind, exc)
+            continue
+        DATA_SOURCE.update({"kind": kind, "path": str(path), "metadata": metadata})
+        log.info("[DATA] Loaded %s hotspots from %s (%s)", f"{len(records):,}", kind, path)
+        if metadata.get("run_id"):
+            log.info("[DATA] Pipeline run %s, window %s -> %s", metadata.get("run_id"),
+                     metadata.get("window_start_utc"), metadata.get("window_end_utc"))
+        return records
 
-        except Exception as exc:
-            print(f"[DATA] ML database load failed: {exc}")
-            print("[DATA] Falling back to mock dataset")
-
-    else:
-        print("[DATA] ML database not found")
-        print(f"[DATA] Expected: {HOTSPOTS_DB}")
-        print("[DATA] Falling back to mock dataset")
-
-    records = load_hotspots_from_mock()
-    print(f"[DATA] Loaded {len(records)} hotspots from mock JSON")
-    return records
+    raise FileNotFoundError(
+        "No hotspot data source available: expected one of "
+        f"{HOTSPOTS_JSON}, {HOTSPOTS_DB} or {MOCK_FILE}"
+    )
 
 
 # ============================================================
@@ -319,7 +172,7 @@ def confidence_as_percent(value):
     """
     Convert confidence into a percentage.
 
-    Your mock data may contain either:
+    The loaded data may contain either:
         0.91
     or:
         91
@@ -401,7 +254,8 @@ def is_industrial_related(hotspot):
     Determine whether a hotspot is associated with industrial
     infrastructure.
 
-    For now we use the explicit field from the mock data.
+    Uses the explicit boolean carried by every loaded record (the pipeline
+    export emits a real bool, matching the mock fixture).
     """
 
     if hotspot.get("inside_industrial_polygon") is True:
@@ -753,7 +607,7 @@ def get_alerts(
     """
     Generate operational alerts from hotspots.
 
-    For now alerts are derived from the mock hotspot dataset.
+    For now alerts are derived from the loaded hotspot dataset on each request.
     """
 
     alerts = []
