@@ -131,6 +131,6 @@ export function formatDayNight(dayNight: string | null | undefined): string {
 
 /** Fall back to the placeholder for empty or missing text. */
 export function formatText(value: string | null | undefined): string {
-  const trimmed = value?.trim();
+  const trimmed = String(value ?? '').trim();
   return trimmed ? trimmed : NO_VALUE;
 }

@@ -300,17 +300,17 @@ function assessLandCover(hotspot: Hotspot): EvidenceAssessment {
 
   if (landCover) {
     const expected = CONSISTENT_LAND_COVER[classification];
-    const normalised = landCover.trim().toLowerCase();
+    const normalised = String(landCover).trim().toLowerCase();
 
     if (expected.length === 0) {
       strength = 'moderate';
-      interpretation = `Land cover is ${landCover.toLowerCase()}. With the class unresolved there is no expected land cover to compare against.`;
+      interpretation = `Land cover is ${String(landCover).toLowerCase()}. With the class unresolved there is no expected land cover to compare against.`;
     } else if (expected.includes(normalised)) {
       strength = 'strong';
-      interpretation = `Land cover is ${landCover.toLowerCase()}, which is consistent with the assigned class and reinforces it.`;
+      interpretation = `Land cover is ${String(landCover).toLowerCase()}, which is consistent with the assigned class and reinforces it.`;
     } else {
       strength = 'weak';
-      interpretation = `Land cover is ${landCover.toLowerCase()}, which is not typical for the assigned class. This is a point of conflict worth reviewing.`;
+      interpretation = `Land cover is ${String(landCover).toLowerCase()}, which is not typical for the assigned class. This is a point of conflict worth reviewing.`;
     }
   }
 
@@ -332,7 +332,7 @@ function assessLandCover(hotspot: Hotspot): EvidenceAssessment {
             ? '—'
             : CONSISTENT_LAND_COVER[classification].length === 0
               ? 'No expectation'
-              : CONSISTENT_LAND_COVER[classification].includes(landCover.trim().toLowerCase())
+              : CONSISTENT_LAND_COVER[classification].includes(String(landCover).trim().toLowerCase())
                 ? 'Yes'
                 : 'No',
       },
