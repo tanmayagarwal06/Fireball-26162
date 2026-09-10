@@ -1,19 +1,24 @@
 {
-  "run_id": "run_20260910T082036Z",
-  "run_utc": "2026-09-10T08:20:36Z",
-  "rows_processed": 151292,
+  "run_id": "run_20260910T165750Z",
+  "run_utc": "2026-09-10T16:57:50Z",
+  "rows_processed": 5966590,
   "input": {
-    "file_count": 5,
+    "file_count": 10,
     "files": [
-      "C:\\Users\\akshu\\OneDrive\\Desktop\\SIH\\Fireball-26162\\data\\raw\\viirs-jpss1_2020_India.csv",
-      "C:\\Users\\akshu\\OneDrive\\Desktop\\SIH\\Fireball-26162\\data\\raw\\viirs-jpss1_2023_India.csv",
-      "C:\\Users\\akshu\\OneDrive\\Desktop\\SIH\\Fireball-26162\\data\\raw\\viirs-jpss1_2024_India.csv",
-      "C:\\Users\\akshu\\OneDrive\\Desktop\\SIH\\Fireball-26162\\data\\raw\\viirs-snpp_2021_India.csv",
-      "C:\\Users\\akshu\\OneDrive\\Desktop\\SIH\\Fireball-26162\\data\\raw\\viirs-snpp_2022_India.csv"
+      "D:\\sih\\data\\raw\\viirs-jpss1_2020_India.csv",
+      "D:\\sih\\data\\raw\\viirs-jpss1_2021_India.csv",
+      "D:\\sih\\data\\raw\\viirs-jpss1_2022_India.csv",
+      "D:\\sih\\data\\raw\\viirs-jpss1_2023_India.csv",
+      "D:\\sih\\data\\raw\\viirs-jpss1_2024_India.csv",
+      "D:\\sih\\data\\raw\\viirs-snpp_2020_India.csv",
+      "D:\\sih\\data\\raw\\viirs-snpp_2021_India.csv",
+      "D:\\sih\\data\\raw\\viirs-snpp_2022_India.csv",
+      "D:\\sih\\data\\raw\\viirs-snpp_2023_India.csv",
+      "D:\\sih\\data\\raw\\viirs-snpp_2024_India.csv"
     ],
-    "raw_rows": 151374,
-    "filtered_rows": 8,
-    "duplicates_merged": 74,
+    "raw_rows": 6020802,
+    "filtered_rows": 390,
+    "duplicates_merged": 53822,
     "date_min": "2020-01-01",
     "date_max": "2024-12-31"
   },
@@ -32,137 +37,201 @@
     ],
     "flare_sites": 32,
     "worldcover_tiles": [],
-    "land_cover_zones": 18
+    "land_cover_zones": 29
   },
   "land_cover_source": "heuristic",
   "classifier": {
     "backend": "xgboost",
     "device": "cuda",
-    "train_rows": 94738,
-    "validation_rows": 23684,
-    "labelled_rows_total": 118422,
-    "unlabelled_rows": 32870,
+    "train_rows": 630806,
+    "augment_copies": 2,
+    "fitted_rows": 1892418,
+    "validation_rows": 157701,
+    "labelled_rows_total": 4465230,
+    "unlabelled_rows": 1501360,
     "label_counts": {
-      "Wildfire": 54461,
-      "Agricultural burning": 63892,
-      "Industrial fire": 36,
-      "Persistent thermal source": 33
+      "Wildfire": 1866963,
+      "Agricultural burning": 1966469,
+      "Industrial fire": 975,
+      "Gas flare": 37532,
+      "Persistent thermal source": 593291
     },
-    "train_seconds": 5.4,
-    "validation_accuracy": 0.9998733322073974,
-    "validation_macro_f1": 0.999936218699411,
+    "train_seconds": 10.8,
+    "validation_accuracy": 0.9986937305407068,
+    "validation_macro_f1": 0.9945369687624659,
     "validation_per_class_f1": {
       "Wildfire": 0.9999,
-      "Agricultural burning": 0.9999,
-      "Industrial fire": 1.0,
-      "Persistent thermal source": 1.0
+      "Agricultural burning": 0.9998,
+      "Industrial fire": 0.9875,
+      "Gas flare": 0.9874,
+      "Persistent thermal source": 0.9981
     },
     "validation_confusion_matrix": [
       [
-        10898,
-        3,
+        50068,
+        8,
+        0,
+        0,
+        0
+      ],
+      [
+        2,
+        49776,
+        5,
         0,
         0
       ],
       [
         0,
-        12764,
+        0,
+        197,
         0,
         0
       ],
       [
         0,
         0,
-        11,
+        0,
+        7468,
         0
       ],
       [
         0,
         0,
         0,
-        8
+        191,
+        49986
       ]
     ],
     "top_features": {
-      "prior_detections_7d": 0.2548,
-      "persistence_30d": 0.1552,
-      "persistence_7d": 0.1443,
-      "land_cover_class": 0.124,
-      "frp": 0.0932,
-      "is_flare_zone": 0.0775,
-      "frp_density": 0.0469,
-      "inside_industrial_polygon": 0.0301,
-      "distance_to_industry_km": 0.0198,
-      "persistence_3d": 0.0176
+      "is_flare_zone": 0.3841,
+      "land_cover_class": 0.1476,
+      "persistence_30d": 0.1105,
+      "persistence_7d": 0.0721,
+      "frp": 0.0708,
+      "is_night": 0.0587,
+      "distance_to_industry_km": 0.0521,
+      "frp_density": 0.0217,
+      "facility_type_code": 0.0215,
+      "inside_industrial_polygon": 0.015
     }
   },
   "confidence_threshold": 0.6,
   "class_distribution": {
-    "Wildfire": 57688,
-    "Agricultural burning": 80859,
-    "Industrial fire": 336,
-    "Gas flare": 0,
-    "Persistent thermal source": 6321,
-    "Unknown": 6088
+    "Wildfire": 2608929,
+    "Agricultural burning": 2321974,
+    "Industrial fire": 6843,
+    "Gas flare": 49409,
+    "Persistent thermal source": 926472,
+    "Unknown": 52963
   },
-  "unknown_share": 0.04024006556856939,
+  "unknown_share": 0.00887659450372826,
   "rule_label_counts": {
-    "unlabelled": 32870,
-    "Wildfire": 54461,
-    "Agricultural burning": 63892,
-    "Industrial fire": 36,
-    "Persistent thermal source": 33
+    "unlabelled": 1501360,
+    "Wildfire": 1866963,
+    "Agricultural burning": 1966469,
+    "Industrial fire": 975,
+    "Gas flare": 37532,
+    "Persistent thermal source": 593291
   },
   "flare_catalog_validation": {
     "catalog_sites": 32,
-    "reference_detections": 0,
-    "flare_predictions": 0,
-    "recall_strict_gas_flare": null,
-    "recall_lenient_flare_or_persistent": null,
-    "precision_proxy_in_flare_zone": null,
-    "catalog_sites_detected": 0
+    "reference_detections": 25641,
+    "flare_predictions": 49409,
+    "recall_strict_gas_flare": 0.9647829647829648,
+    "recall_lenient_flare_or_persistent": 0.9872859872859873,
+    "precision_proxy_in_flare_zone": 1.0,
+    "catalog_sites_detected": 14
+  },
+  "firms_type_agreement": {
+    "available": true,
+    "static_sources": 666990,
+    "static_as_flare_or_persistent": 0.9682903791661044,
+    "static_as_vegetation_class": 0.019709440921153242,
+    "static_as_unknown": 0.01178878244051635,
+    "vegetation_fires": 5287504,
+    "vegetation_as_wildfire_or_agri": 0.9296774054449888,
+    "vegetation_as_flare_or_persistent": 0.0605839730806823,
+    "vegetation_as_unknown": 0.008479804459722394
+  },
+  "confidence_profile": {
+    "max_prob_p10": 0.9739171862602234,
+    "max_prob_p50": 0.9970270991325378,
+    "share_above_0_99": 0.7441898974120896,
+    "share_below_0_60": 0.00887659450372826,
+    "share_between_0_60_and_0_90": 0.020305400572186123
   },
   "clusters": {
     "eps_km": 3.0,
     "min_samples": 3,
-    "clusters_total": 1885,
-    "clustered_hotspots": 6485,
-    "singletons": 144807,
-    "outbreak_fronts": 128,
-    "persistent_clusters": 21,
-    "seconds": 2.7
+    "clusters_total": 485341,
+    "clustered_hotspots": 3928724,
+    "singletons": 2037866,
+    "outbreak_fronts": 96508,
+    "persistent_clusters": 33417,
+    "seconds": 42.8
   },
   "geojson_days": 7,
+  "console": {
+    "max_records": 3000,
+    "min_per_class": 40,
+    "stratified": true,
+    "candidates_in_window": 14351,
+    "records": 3000,
+    "class_distribution": {
+      "Wildfire": 463,
+      "Agricultural Burning": 1427,
+      "Industrial Fire": 8,
+      "Gas Flare": 54,
+      "Persistent Thermal Source": 1008,
+      "Unknown": 40
+    },
+    "rebuilt_utc": "2026-09-10T17:09:35Z"
+  },
   "outputs": {
     "sqlite": {
-      "path": "C:\\Users\\akshu\\OneDrive\\Desktop\\SIH\\Fireball-26162\\data\\hotspots.db",
-      "rows": 151292,
-      "clusters": 1885,
-      "size_mb": 83.8,
-      "seconds": 4.1
+      "path": "D:\\sih\\data\\hotspots.db",
+      "rows": 5966590,
+      "clusters": 485341,
+      "size_mb": 3503.2,
+      "seconds": 253.4
     },
     "geojson": {
-      "path": "C:\\Users\\akshu\\OneDrive\\Desktop\\SIH\\Fireball-26162\\data\\latest_hotspots.geojson",
-      "features": 391,
-      "clusters": 6,
-      "size_mb": 0.35,
-      "seconds": 0.1
+      "path": "D:\\sih\\data\\latest_hotspots.geojson",
+      "features": 14351,
+      "clusters": 1218,
+      "size_mb": 13.39,
+      "seconds": 1.5
     },
     "clusters_geojson": {
-      "path": "C:\\Users\\akshu\\OneDrive\\Desktop\\SIH\\Fireball-26162\\data\\latest_clusters.geojson",
-      "features": 6,
-      "size_mb": 0.0,
-      "seconds": 0.0
+      "path": "D:\\sih\\data\\latest_clusters.geojson",
+      "features": 1218,
+      "size_mb": 0.75,
+      "seconds": 0.3
     },
-    "model": "C:\\Users\\akshu\\OneDrive\\Desktop\\SIH\\Fireball-26162\\data\\models\\fire_classifier.pkl",
-    "summary_json": "C:\\Users\\akshu\\OneDrive\\Desktop\\SIH\\Fireball-26162\\data\\pipeline_summary.json"
+    "console_json": {
+      "path": "D:\\sih\\data\\hotspots.json",
+      "records": 3000,
+      "size_mb": 3.56,
+      "class_distribution": {
+        "Wildfire": 463,
+        "Agricultural Burning": 1427,
+        "Industrial Fire": 8,
+        "Gas Flare": 54,
+        "Persistent Thermal Source": 1008,
+        "Unknown": 40
+      },
+      "seconds": 0.2
+    },
+    "model": "D:\\sih\\data\\models\\fire_classifier.pkl",
+    "summary_json": "D:\\sih\\data\\pipeline_summary.json"
   },
   "timings": {
-    "clean": 10.2,
-    "features": 2.2,
-    "classify": 23.0,
-    "cluster": 2.7,
-    "export": 4.3,
-    "total": 42.4
+    "clean": 31.4,
+    "features": 54.6,
+    "classify": 123.5,
+    "cluster": 42.9,
+    "export": 257.2,
+    "total": 509.6
   }
 }
