@@ -43,7 +43,7 @@ function tally(values: Array<string | null | undefined>, fallback = 'Unspecified
   const counts = new Map<string, number>();
 
   for (const value of values) {
-    const key = value?.trim() || fallback;
+    const key = String(value ?? '').trim() || fallback;
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
 

@@ -44,7 +44,7 @@ const DatasetContext = createContext<DatasetContextValue | null>(null);
 function distinct(values: Array<string | null | undefined>): string[] {
   const set = new Set<string>();
   for (const value of values) {
-    const trimmed = value?.trim();
+    const trimmed = String(value ?? '').trim();
     if (trimmed) set.add(trimmed);
   }
   return [...set].sort((a, b) => a.localeCompare(b));
