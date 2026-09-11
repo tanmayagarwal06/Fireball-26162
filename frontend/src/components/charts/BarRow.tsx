@@ -1,8 +1,8 @@
-/**
+﻿/**
  * Horizontal bar row.
  *
  * The console's primary chart primitive: a label, a proportional bar and a value.
- * Built from divs rather than a charting library — the visualisations here are
+ * Built from divs rather than a charting library â€” the visualisations here are
  * deliberately restrained, and a chart dependency would bring axes, tooltips and
  * animation the design explicitly rejects.
  *
@@ -51,9 +51,9 @@ export function BarRow({
         {label}
       </span>
 
-      <span className="h-2 flex-1 bg-surface-lowest">
+      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-lowest">
         <span
-          className="block h-full transition-[width] duration-200"
+          className="block h-full rounded-full transition-[width] duration-300"
           style={{ backgroundColor: color, width: `${ratio * 100}%` }}
         />
       </span>
@@ -75,7 +75,7 @@ export function BarRow({
   return (
     <button
       aria-pressed={active}
-      className={`flex w-full items-center gap-2 px-1 py-0.5 text-left transition-colors hover:bg-surface-high ${
+      className={`flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-1.5 py-1 text-left hover:bg-surface-high ${
         active ? 'bg-surface-high' : ''
       }`}
       onClick={onClick}

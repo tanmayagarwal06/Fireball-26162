@@ -1,9 +1,9 @@
 /**
- * Persistent top navigation, 48px tall per the Stitch toolbar-width token.
+ * Persistent top navigation, 52px tall per the toolbar token.
  *
- * Carries the product identity, the five primary views and the live backend
- * status indicator. The status indicator reflects a real `/health` poll — it is
- * not decorative.
+ * Carries the product identity (ember mark + wordmark), the five primary views
+ * as a pill group, and the live backend status. The status indicator reflects
+ * a real `/health` poll — it is not decorative.
  */
 import { NavLink } from 'react-router-dom';
 import { NAV_ITEMS } from '../../navigation';
@@ -20,36 +20,40 @@ export interface TopNavProps {
 
 export function TopNav({ backendTone, backendLabel, onToggleNav, navOpen }: TopNavProps) {
   return (
-    <header className="flex h-toolbar shrink-0 items-center justify-between gap-4 border-b border-outline-variant bg-background px-gutter">
-      <div className="flex min-w-0 items-center gap-4">
+    <header className="flex h-toolbar shrink-0 items-center justify-between gap-4 border-b border-outline-variant bg-background/95 px-gutter backdrop-blur">
+      <div className="flex min-w-0 items-center gap-5">
         <button
           aria-controls="primary-navigation"
           aria-expanded={navOpen}
           aria-label="Toggle navigation"
-          className="flex size-7 items-center justify-center border border-outline-variant text-on-surface-variant transition-colors hover:bg-surface-high md:hidden"
+          className="flex size-8 items-center justify-center border border-outline-variant text-on-surface-variant hover:bg-surface-high md:hidden"
           onClick={onToggleNav}
           type="button"
         >
           <Icon name={navOpen ? 'close' : 'menu'} size={18} />
         </button>
 
-        <div className="flex min-w-0 items-baseline gap-2">
-          <span className="truncate text-headline font-bold uppercase tracking-tight text-on-surface">
-            Thermal Intelligence
-          </span>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span aria-hidden="true" className="ember-mark size-3 shrink-0 rounded-full" />
+          <span className="truncate text-headline text-on-surface">Thermal Intelligence</span>
           {/* States the problem statement without implying a live data feed. */}
-          <span className="hidden font-mono text-body-sm text-outline lg:inline">SIH26162</span>
+          <span className="hidden rounded-[4px] border border-outline-variant px-1.5 font-mono text-[10px] leading-[16px] tracking-[0.04em] text-outline lg:inline">
+            SIH26162
+          </span>
         </div>
 
-        <nav aria-label="Primary" className="hidden h-full items-center gap-1 md:flex">
+        <nav
+          aria-label="Primary"
+          className="hidden items-center gap-0.5 rounded-[var(--radius-md)] border border-outline-variant bg-surface-low/70 p-0.5 md:flex"
+        >
           {NAV_ITEMS.map((item) => (
             <NavLink
               className={({ isActive }) =>
                 [
-                  'flex h-full items-center gap-1.5 border-b-2 px-2 text-body-sm transition-colors',
+                  'flex h-7 items-center gap-1.5 rounded-[var(--radius-sm)] px-2.5 text-body-sm transition-colors',
                   isActive
-                    ? 'border-primary font-semibold text-primary'
-                    : 'border-transparent text-on-surface-variant hover:bg-surface-high hover:text-on-surface',
+                    ? 'bg-surface-highest font-medium text-on-surface shadow-[inset_0_1px_0_rgb(255_255_255_/_0.06)]'
+                    : 'text-on-surface-variant hover:bg-surface-high hover:text-on-surface',
                 ].join(' ')
               }
               end={item.path === '/'}
@@ -57,7 +61,7 @@ export function TopNav({ backendTone, backendLabel, onToggleNav, navOpen }: TopN
               title={item.description}
               to={item.path}
             >
-              <Icon name={item.icon} size={14} />
+              <Icon className="text-outline" name={item.icon} size={14} />
               <span className="whitespace-nowrap">{item.label}</span>
             </NavLink>
           ))}
@@ -66,7 +70,7 @@ export function TopNav({ backendTone, backendLabel, onToggleNav, navOpen }: TopN
 
       <div className="flex shrink-0 items-center gap-3">
         <div
-          className="flex items-center gap-1.5 border border-outline-variant bg-surface-container px-2 py-1"
+          className="flex h-7 items-center gap-2 rounded-[var(--radius-sm)] border border-outline-variant bg-surface-low/70 px-2.5"
           title={`Backend connectivity: ${backendLabel}`}
         >
           <StatusDot label={`Backend ${backendLabel}`} tone={backendTone} />

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Hotspot marker icons.
  *
  * DESIGN.md specifies 8px squares colour-coded by classification, with a
@@ -6,7 +6,7 @@
  * divIcon so the shape stays square and CSS-driven rather than a raster sprite.
  *
  * The markup is assembled from a fixed template and a colour drawn from our own
- * token table — no hotspot field is ever interpolated into HTML.
+ * token table â€” no hotspot field is ever interpolated into HTML.
  */
 import { DivIcon } from 'leaflet';
 
@@ -27,7 +27,7 @@ export function createHotspotIcon({ color, selected, hollow = false }: HotspotIc
   const fill = hollow ? 'transparent' : color;
 
   const dot =
-    `<span class="ti-marker" style="background:${fill};box-shadow:0 0 0 1px ${color}"></span>`;
+    `<span class="ti-marker" style="background:${fill};box-shadow:0 0 0 1px rgb(0 0 0 / 0.55), 0 0 5px color-mix(in srgb, ${color} 40%, transparent)"></span>`;
 
   if (!selected) {
     return new DivIcon({

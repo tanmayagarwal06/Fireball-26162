@@ -29,15 +29,15 @@ export function RiskBadge({
 
   const style: CSSProperties = {
     color,
-    borderColor: `color-mix(in srgb, ${color} 40%, transparent)`,
-    backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)`,
+    borderColor: `color-mix(in srgb, ${color} 30%, transparent)`,
+    backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)`,
   };
 
   const value = typeof score === 'number' ? score : '—';
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 border px-1.5 py-0.5${
+      className={`inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] border px-1.5 py-0.5${
         className ? ` ${className}` : ''
       }`}
       style={style}

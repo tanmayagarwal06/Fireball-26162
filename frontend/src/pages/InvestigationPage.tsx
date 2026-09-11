@@ -220,7 +220,7 @@ export function InvestigationPage() {
 
           {/* Explain the ring rather than leaving the operator to infer it. */}
           {typeof hotspot.distance_to_industry_km === 'number' ? (
-            <div className="pointer-events-none absolute bottom-8 left-3 z-[500] max-w-[280px] border border-outline-variant bg-surface-lowest/95 p-compact">
+            <div className="glass pointer-events-none absolute bottom-8 left-3 z-[500] max-w-[280px] rounded-[var(--radius-md)] p-gutter">
               <p className="text-label uppercase text-on-surface-variant">Proximity buffer</p>
               <p className="mt-1 font-mono text-data text-on-surface">
                 {formatKm(hotspot.distance_to_industry_km)}

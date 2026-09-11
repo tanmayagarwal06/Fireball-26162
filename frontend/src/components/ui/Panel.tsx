@@ -1,7 +1,7 @@
 /**
- * Level-1 container: 1px border, square corners, tonal fill, no shadow.
- * This is the only bordered box the console uses, so panel chrome stays uniform
- * across all five screens.
+ * Level-1 container: a matte plate (hairline border, 1px top highlight, soft
+ * lift shadow) with rounded corners. This is the only bordered box the console
+ * uses, so panel chrome stays uniform across all five screens.
  */
 import type { ReactNode } from 'react';
 import { Icon } from './Icon';
@@ -32,14 +32,14 @@ export function Panel({
 }: PanelProps) {
   return (
     <section
-      className={`flex min-h-0 min-w-0 flex-col border border-outline-variant bg-surface-container${
+      className={`plate flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--radius-md)] border border-outline-variant bg-surface-container${
         className ? ` ${className}` : ''
       }`}
     >
       {title ? (
-        <header className="flex h-8 shrink-0 items-center justify-between gap-2 border-b border-outline-variant bg-surface-low px-compact">
+        <header className="flex h-9 shrink-0 items-center justify-between gap-2 border-b border-outline-variant bg-surface-low/60 px-gutter">
           <h2 className="flex items-center gap-1.5 text-label uppercase text-on-surface-variant">
-            {icon ? <Icon name={icon} size={14} /> : null}
+            {icon ? <Icon className="text-outline" name={icon} size={14} /> : null}
             <span className="truncate">{title}</span>
           </h2>
           {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}

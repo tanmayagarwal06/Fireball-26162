@@ -1,8 +1,8 @@
-/**
+﻿/**
  * Loading, empty and error states.
  *
  * Every screen that reads from the API uses these, so an operator always gets an
- * explicit answer about why a panel has no content — never a silent blank.
+ * explicit answer about why a panel has no content â€” never a silent blank.
  */
 import { Icon } from './Icon';
 
@@ -11,7 +11,7 @@ export function Skeleton({ className }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
-      className={`animate-pulse bg-surface-high${className ? ` ${className}` : ''}`}
+      className={`animate-pulse rounded-[var(--radius-sm)] bg-surface-high${className ? ` ${className}` : ''}`}
     />
   );
 }
@@ -58,7 +58,7 @@ export function EmptyState({ title, description, icon = 'filter_alt_off', action
       ) : null}
       {action ? (
         <button
-          className="mt-1 border border-outline-variant bg-surface-high px-3 py-1 text-label uppercase text-on-surface transition-colors hover:bg-surface-highest"
+          className="mt-2 rounded-[var(--radius-sm)] border border-outline-strong bg-surface-high px-3 py-1.5 text-label uppercase text-on-surface hover:bg-surface-highest"
           onClick={action.onClick}
           type="button"
         >
@@ -87,7 +87,7 @@ export function ErrorState({ message, onRetry, title = 'Request failed' }: Error
       <p className="max-w-md font-mono text-body-sm text-on-surface-variant">{message}</p>
       {onRetry ? (
         <button
-          className="mt-1 flex items-center gap-1 border border-outline-variant bg-surface-high px-3 py-1 text-label uppercase text-on-surface transition-colors hover:bg-surface-highest"
+          className="mt-2 flex items-center gap-1 rounded-[var(--radius-sm)] border border-outline-strong bg-surface-high px-3 py-1.5 text-label uppercase text-on-surface hover:bg-surface-highest"
           onClick={onRetry}
           type="button"
         >

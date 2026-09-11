@@ -41,9 +41,9 @@ export function ClassificationBadge({
     return (
       <span
         aria-label={definition.label}
-        className={`inline-block size-2 shrink-0${className ? ` ${className}` : ''}`}
+        className={`inline-block size-2 shrink-0 rounded-[3px]${className ? ` ${className}` : ''}`}
         role="img"
-        style={{ backgroundColor: color }}
+        style={{ backgroundColor: color, boxShadow: `0 0 6px color-mix(in srgb, ${color} 55%, transparent)` }}
         title={title}
       />
     );
@@ -51,13 +51,13 @@ export function ClassificationBadge({
 
   const style: CSSProperties = {
     color,
-    backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)`,
-    borderColor: `color-mix(in srgb, ${color} 30%, transparent)`,
+    backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)`,
+    borderColor: `color-mix(in srgb, ${color} 28%, transparent)`,
   };
 
   return (
     <span
-      className={`inline-flex max-w-full items-center gap-1 border px-1.5 py-0.5 text-label uppercase${
+      className={`inline-flex max-w-full items-center gap-1 rounded-[var(--radius-sm)] border px-1.5 py-0.5 text-label uppercase${
         className ? ` ${className}` : ''
       }`}
       style={style}

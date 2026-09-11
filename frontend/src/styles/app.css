@@ -3,39 +3,32 @@
 /*
  * Design tokens for the Thermal Intelligence console.
  *
- * Source of truth: stitch/*\/DESIGN.md front-matter (identical across all five screens)
- * plus the per-screen Tailwind configs in stitch/*\/code.html.
+ * Source of truth: frontend/DESIGN.md. Direction: a control room at night —
+ * near-black neutral surfaces layered by tone, hairline borders instead of
+ * shadows, one ember accent reserved for identity / active / focus, and
+ * saturated colour only on data (classification, risk, status).
  *
- * Where the five Stitch screens disagreed, the following decisions were made:
- *
- *  - Corner radius: DESIGN.md and screen-2 mandate strictly 0px. Screens 1 and 3 set a
- *    0.25rem default. We follow DESIGN.md: everything is square. Status LEDs are the
- *    only exception and use an explicit rounded-full.
- *
- *  - Classification colours: three incompatible palettes existed across the screens.
- *    We standardise on screen-3-analytics, the only palette that covers all six
- *    classes with an explicit, self-consistent mapping.
- *
- *  - Sidebar width: DESIGN.md says 320px, screen-1 overrides to 280px. Both are kept.
+ * Every component references these tokens through Tailwind utilities
+ * (bg-surface-container, border-outline-variant, text-label, ...). No raw hex
+ * values belong in components.
  */
 
 @theme {
   /* ---------------------------------------------------------------- Fonts */
-  /* Inter for UI text. JetBrains Mono for every numeric / technical value. */
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
 
   /* ----------------------------------------------------------- Type scale */
   --text-label: 11px;
   --text-label--line-height: 14px;
-  --text-label--letter-spacing: 0.05em;
-  --text-label--font-weight: 700;
+  --text-label--letter-spacing: 0.06em;
+  --text-label--font-weight: 500;
 
   --text-body-sm: 12px;
   --text-body-sm--line-height: 16px;
   --text-body-sm--font-weight: 400;
 
-  --text-body: 14px;
+  --text-body: 13.5px;
   --text-body--line-height: 20px;
   --text-body--font-weight: 400;
 
@@ -43,72 +36,89 @@
   --text-data--line-height: 18px;
   --text-data--font-weight: 500;
 
-  --text-data-lg: 16px;
-  --text-data-lg--line-height: 20px;
+  --text-data-lg: 18px;
+  --text-data-lg--line-height: 22px;
   --text-data-lg--font-weight: 500;
 
-  --text-headline: 18px;
+  --text-headline: 17px;
   --text-headline--line-height: 24px;
-  --text-headline--letter-spacing: -0.01em;
+  --text-headline--letter-spacing: -0.015em;
   --text-headline--font-weight: 600;
 
-  /* ------------------------------------------------------------- Surfaces */
-  /* Tonal layering instead of shadows. Level 0 = map, Level 1 = panels. */
-  --color-background: #131315;
-  --color-surface: #131315;
-  --color-surface-lowest: #0e0e10;
-  --color-surface-low: #1b1b1d;
-  --color-surface-container: #1f1f21;
-  --color-surface-high: #2a2a2b;
-  --color-surface-highest: #353436;
-  --color-surface-bright: #39393b;
-  --color-input: #020617;
+  --text-display: 26px;
+  --text-display--line-height: 30px;
+  --text-display--letter-spacing: -0.02em;
+  --text-display--font-weight: 600;
 
-  --color-on-surface: #e4e2e4;
-  --color-on-surface-variant: #c6c6cd;
-  --color-outline: #909097;
-  --color-outline-variant: #45464d;
+  /* ------------------------------------------------------------- Surfaces */
+  /* Neutral zinc ramp, warm-neutral rather than blue. Level 0 = map, 1 = panels. */
+  --color-background: #0b0b0d;
+  --color-surface: #0b0b0d;
+  --color-surface-lowest: #09090b;
+  --color-surface-low: #101012;
+  --color-surface-container: #141417;
+  --color-surface-high: #1b1b1f;
+  --color-surface-highest: #232329;
+  --color-surface-bright: #2b2b32;
+  --color-input: #0e0e11;
+
+  --color-on-surface: #f2f2f4;
+  --color-on-surface-variant: #a6a6ae;
+  --color-outline: #71717a;
+  --color-outline-variant: rgb(255 255 255 / 0.08);
+  --color-outline-strong: rgb(255 255 255 / 0.16);
 
   /* ------------------------------------------------------------ Accents */
-  --color-primary: #bec6e0;
-  --color-on-primary: #283044;
-  --color-primary-container: #0f172a;
-  --color-on-primary-container: #798098;
-  --color-secondary: #b9c7e0;
-  --color-secondary-container: #3c4a5e;
-  --color-on-secondary-container: #abb9d2;
-  --color-tertiary: #dec29a;
-  --color-error: #ffb4ab;
-  --color-error-container: #93000a;
-  --color-on-error-container: #ffdad6;
+  --color-accent: #ff7a45;
+  --color-accent-soft: rgb(255 122 69 / 0.14);
+  --color-primary: #f2f2f4;
+  --color-on-primary: #0b0b0d;
+  --color-primary-container: #1e1e23;
+  --color-on-primary-container: #a6a6ae;
+  --color-secondary: #d4d4d8;
+  --color-secondary-container: #26262c;
+  --color-on-secondary-container: #d4d4d8;
+  --color-tertiary: #e2b86a;
+  --color-error: #ff6b6b;
+  --color-error-container: #3a1414;
+  --color-on-error-container: #ffd5d5;
 
   /* ------------------------------------------------- Classification scale */
   /* Six thermal classes. Keys mirror src/domain/classification.ts. */
-  --color-class-wildfire: #ef4444;
-  --color-class-agricultural: #f97316;
-  --color-class-industrial: #eab308;
-  --color-class-gas-flare: #a855f7;
-  --color-class-persistent: #3b82f6;
-  --color-class-unknown: #9ca3af;
+  --color-class-wildfire: #ff5d57;
+  --color-class-agricultural: #ff9f3f;
+  --color-class-industrial: #ffd257;
+  --color-class-gas-flare: #c084fc;
+  --color-class-persistent: #60a5fa;
+  --color-class-unknown: #8b8f98;
 
   /* ----------------------------------------------------------- Risk scale */
-  /* Emergency-management convention. Thresholds live in src/domain/risk.ts. */
-  --color-risk-critical: #ffb4ab;
-  --color-risk-high: #f59e0b;
-  --color-risk-medium: #bec6e0;
-  --color-risk-low: #909097;
+  /* Thresholds live in src/domain/risk.ts. */
+  --color-risk-critical: #ff5d57;
+  --color-risk-high: #ffb03b;
+  --color-risk-medium: #cbd0d8;
+  --color-risk-low: #6f737c;
 
   /* ------------------------------------------------------- Status signals */
-  --color-status-online: #4ade80;
-  --color-status-offline: #ef4444;
-  --color-status-pending: #f59e0b;
+  --color-status-online: #34d399;
+  --color-status-offline: #ff5d57;
+  --color-status-pending: #ffb03b;
+
+  /* --------------------------------------------------------------- Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
 
   /* -------------------------------------------------- Spacing (4px grid) */
   --spacing-gutter: 12px;
   --spacing-compact: 8px;
-  --spacing-toolbar: 48px;
+  --spacing-toolbar: 52px;
   --spacing-sidebar: 320px;
   --spacing-sidebar-narrow: 280px;
+
+  /* --------------------------------------------------------------- Motion */
+  --ease-out-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 @layer base {
@@ -128,48 +138,101 @@
     line-height: var(--text-body--line-height);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    font-feature-settings: 'cv11', 'ss01', 'tnum';
   }
 
   #root {
     height: 100%;
   }
 
-  /* Every container separation is a 1px line, never a shadow. */
+  /* Every container separation is a hairline, never a hard shadow. */
   *,
   *::before,
   *::after {
     border-color: var(--color-outline-variant);
   }
 
-  /* DESIGN.md: focus is a high-contrast 1px border, not a glow. */
+  /*
+   * Rounded geometry is applied at the base layer so every bordered box,
+   * control and chip picks it up without per-component classes. Components
+   * that need a different radius set it explicitly (rounded-* wins).
+   */
+  [class~='border'] {
+    border-radius: var(--radius-md);
+  }
+  button,
+  select,
+  input:not([type='range']):not([type='checkbox']):not([type='radio']),
+  textarea {
+    border-radius: var(--radius-sm);
+  }
+  button {
+    cursor: pointer;
+    transition:
+      background-color 150ms var(--ease-out-soft),
+      border-color 150ms var(--ease-out-soft),
+      color 150ms var(--ease-out-soft),
+      opacity 150ms var(--ease-out-soft);
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  select,
+  input,
+  textarea {
+    transition:
+      border-color 150ms var(--ease-out-soft),
+      box-shadow 150ms var(--ease-out-soft);
+  }
+
+  /* Focus: a soft ember ring, visible on every surface. */
   :focus-visible {
-    outline: 1px solid var(--color-on-surface);
-    outline-offset: 1px;
+    outline: 2px solid color-mix(in srgb, var(--color-accent) 70%, transparent);
+    outline-offset: 2px;
+  }
+  select:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible {
+    outline: none;
+    border-color: color-mix(in srgb, var(--color-accent) 60%, transparent);
+    box-shadow: 0 0 0 3px var(--color-accent-soft);
+  }
+
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: var(--color-accent);
+  }
+  input[type='range'] {
+    accent-color: var(--color-accent);
   }
 
   /* Thin scrollbars keep dense panels readable. */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
   ::-webkit-scrollbar-track {
-    background: var(--color-surface-lowest);
+    background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: var(--color-outline-variant);
+    background: var(--color-outline-strong);
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
   }
   ::-webkit-scrollbar-thumb:hover {
     background: var(--color-outline);
+    background-clip: padding-box;
   }
 
   ::selection {
-    background: var(--color-secondary-container);
+    background: color-mix(in srgb, var(--color-accent) 35%, transparent);
     color: var(--color-on-surface);
   }
 }
 
 @layer components {
-  /* Material Symbols Outlined, as used by all five Stitch screens. */
+  /* Material Symbols Outlined. */
   .material-symbols-outlined {
     font-family: 'Material Symbols Outlined', sans-serif;
     font-weight: normal;
@@ -198,31 +261,83 @@
       'opsz' 20;
   }
 
-  /* ------------------------------------------------------------------ Map */
+  /* ------------------------------------------------------------- Material */
   /*
-   * Leaflet ships light-theme chrome. These overrides pull it into the console's
-   * dark, square-cornered language. Attribution stays legible — it is required
-   * by the OpenStreetMap and Esri tile licences.
+   * A panel is a matte plate resting on the background: a 1px top highlight
+   * catches the light, a soft, wide shadow lifts it off the page. Used by
+   * Panel and by every standalone bordered card.
    */
+  .plate {
+    background-image: linear-gradient(180deg, rgb(255 255 255 / 0.025), transparent 48px);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.04),
+      0 12px 32px -20px rgb(0 0 0 / 0.8);
+  }
+
+  /* Translucent overlay for surfaces that float above map imagery. */
+  .glass {
+    background-color: color-mix(in srgb, var(--color-surface-lowest) 78%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid var(--color-outline-strong);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.06),
+      0 16px 40px -24px rgb(0 0 0 / 0.9);
+  }
+
+  /* Ember mark used in the top navigation. */
+  .ember-mark {
+    background: radial-gradient(circle at 35% 30%, #ffb38a 0%, var(--color-accent) 45%, #c2410c 100%);
+    box-shadow:
+      0 0 0 1px rgb(255 122 69 / 0.35),
+      0 0 18px rgb(255 122 69 / 0.45);
+  }
+
+  /* Page atmosphere for non-map screens: a faint ember bloom and a 40px grid. */
+  .surface-grid {
+    background-color: var(--color-background);
+    background-image:
+      radial-gradient(1200px 520px at 8% -10%, rgb(255 122 69 / 0.07), transparent 60%),
+      radial-gradient(900px 400px at 100% 110%, rgb(96 165 250 / 0.045), transparent 60%),
+      linear-gradient(to right, rgb(255 255 255 / 0.025) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(255 255 255 / 0.025) 1px, transparent 1px);
+    background-size:
+      auto,
+      auto,
+      40px 40px,
+      40px 40px;
+  }
+
+  /* Ambient glow behind the map so the canvas sits inside the chrome. */
+  .map-frame {
+    box-shadow:
+      inset 0 0 0 1px var(--color-outline-variant),
+      inset 0 0 80px rgb(0 0 0 / 0.55);
+  }
+
+  /* ------------------------------------------------------------------ Map */
   .leaflet-container {
     background: var(--color-surface-lowest);
     font-family: var(--font-sans);
     font-size: 12px;
-    /* The map is the primary surface; never let it show a focus ring itself. */
     outline: none;
   }
 
   .leaflet-container a {
-    color: var(--color-primary);
+    color: var(--color-on-surface-variant);
   }
 
   .leaflet-control-attribution {
-    background: color-mix(in srgb, var(--color-surface-lowest) 85%, transparent) !important;
+    background: color-mix(in srgb, var(--color-surface-lowest) 70%, transparent) !important;
     color: var(--color-outline) !important;
-    border-top: 1px solid var(--color-outline-variant);
-    border-left: 1px solid var(--color-outline-variant);
-    padding: 1px 6px !important;
+    border: 1px solid var(--color-outline-variant);
+    border-right: 0;
+    border-bottom: 0;
+    border-top-left-radius: var(--radius-sm);
+    padding: 2px 8px !important;
     font-size: 10px !important;
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
   }
 
   .leaflet-control-attribution a {
@@ -230,20 +345,21 @@
   }
 
   .leaflet-control-scale-line {
-    background: color-mix(in srgb, var(--color-surface-lowest) 80%, transparent);
-    border-color: var(--color-outline-variant);
+    background: color-mix(in srgb, var(--color-surface-lowest) 70%, transparent);
+    border-color: var(--color-outline-strong);
     color: var(--color-on-surface-variant);
     font-family: var(--font-mono);
     font-size: 10px;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
   }
 
   .leaflet-popup-content-wrapper,
   .leaflet-popup-tip {
     background: var(--color-surface-container);
     color: var(--color-on-surface);
-    border: 1px solid var(--color-outline-variant);
-    border-radius: 0;
-    box-shadow: none;
+    border: 1px solid var(--color-outline-strong);
+    border-radius: var(--radius-md);
+    box-shadow: 0 16px 40px -20px rgb(0 0 0 / 0.9);
   }
 
   .leaflet-popup-content {
@@ -251,19 +367,21 @@
   }
 
   .leaflet-tooltip {
-    background: var(--color-surface-lowest);
-    border: 1px solid var(--color-outline-variant);
-    border-radius: 0;
-    box-shadow: none;
+    background: color-mix(in srgb, var(--color-surface-lowest) 92%, transparent);
+    border: 1px solid var(--color-outline-strong);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 12px 32px -16px rgb(0 0 0 / 0.9);
     color: var(--color-on-surface);
-    padding: 4px 6px;
+    padding: 6px 8px;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
   }
 
   .leaflet-tooltip::before {
     display: none;
   }
 
-  /* Hotspot markers: 8-10px squares, never rounded. */
+  /* Hotspot markers: 9px rounded squares with a 1px ring and a faint glow. */
   .ti-marker-icon {
     background: transparent;
     border: 0;
@@ -273,6 +391,12 @@
     display: block;
     width: 10px;
     height: 10px;
+    border-radius: 3px;
+    transition: transform 150ms var(--ease-out-soft);
+  }
+
+  .leaflet-marker-icon:hover .ti-marker {
+    transform: scale(1.35);
   }
 
   .ti-marker-selected {
@@ -284,50 +408,78 @@
     justify-content: center;
   }
 
+  .ti-marker-selected .ti-marker {
+    transform: scale(1.15);
+  }
+
+  /* Soft halo pulse around the active marker. */
+  .ti-marker-selected::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgb(255 255 255 / 0.18), transparent 70%);
+    animation: ti-halo 1.8s ease-out infinite;
+  }
+
+  @keyframes ti-halo {
+    0% {
+      transform: scale(0.6);
+      opacity: 0.9;
+    }
+    100% {
+      transform: scale(1.5);
+      opacity: 0;
+    }
+  }
+
   /* Crosshair brackets around the active marker. */
   .ti-bracket {
     position: absolute;
     width: 6px;
     height: 6px;
-    border: 1px solid var(--color-on-surface);
+    border: 1.5px solid var(--color-on-surface);
   }
   .ti-bracket--tl {
     top: 0;
     left: 0;
     border-right: 0;
     border-bottom: 0;
+    border-top-left-radius: 2px;
   }
   .ti-bracket--tr {
     top: 0;
     right: 0;
     border-left: 0;
     border-bottom: 0;
+    border-top-right-radius: 2px;
   }
   .ti-bracket--bl {
     bottom: 0;
     left: 0;
     border-right: 0;
     border-top: 0;
+    border-bottom-left-radius: 2px;
   }
   .ti-bracket--br {
     bottom: 0;
     right: 0;
     border-left: 0;
     border-top: 0;
+    border-bottom-right-radius: 2px;
   }
 
   /* Keyboard focus on a marker must be visible against any basemap. */
   .leaflet-marker-icon:focus-visible {
     outline: 2px solid var(--color-on-surface);
     outline-offset: 2px;
+    border-radius: 4px;
   }
 
-  /* Faint technical grid, used as a page background on non-map screens. */
-  .surface-grid {
-    background-image:
-      linear-gradient(to right, color-mix(in srgb, var(--color-outline) 5%, transparent) 1px, transparent 1px),
-      linear-gradient(to bottom, color-mix(in srgb, var(--color-outline) 5%, transparent) 1px, transparent 1px);
-    background-size: 40px 40px;
+  /* Leaflet zoom / layer control buttons inherit the console look when present. */
+  .leaflet-bar {
+    border: 0 !important;
+    box-shadow: none !important;
   }
 }
 

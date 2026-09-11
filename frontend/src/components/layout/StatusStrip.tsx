@@ -38,7 +38,7 @@ export function StatusStrip({
   lastCheckedAt,
 }: StatusStripProps) {
   return (
-    <footer className="flex h-6 shrink-0 items-center gap-3 overflow-x-auto border-t border-outline-variant bg-surface-container px-gutter">
+    <footer className="flex h-7 shrink-0 items-center gap-3 overflow-x-auto border-t border-outline-variant bg-surface-low/80 px-gutter">
       <div className="flex shrink-0 items-center gap-1.5">
         <StatusDot label={`Backend ${label}`} tone={tone} />
         <span className="text-label uppercase text-on-surface-variant">{label}</span>
@@ -83,7 +83,7 @@ export function StatusStrip({
         </span>
         <button
           aria-label="Re-check backend health"
-          className="flex items-center gap-1 border border-outline-variant px-1.5 text-label uppercase text-on-surface-variant transition-colors hover:bg-surface-high hover:text-on-surface disabled:opacity-50"
+          className="flex h-5 items-center gap-1 rounded-[4px] border border-outline-variant px-1.5 text-label uppercase text-on-surface-variant hover:bg-surface-high hover:text-on-surface disabled:opacity-50"
           disabled={isFetching}
           onClick={onRefresh}
           type="button"

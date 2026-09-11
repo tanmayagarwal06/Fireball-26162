@@ -13,9 +13,9 @@ export interface ProvenanceTagProps {
 }
 
 const TONE: Record<ProvenanceKey, string> = {
-  API: 'border-outline-variant text-on-surface-variant',
-  DERIVED: 'border-outline-variant text-outline',
-  PENDING_MODEL: 'border-tertiary/40 text-tertiary',
+  API: 'border-outline-strong bg-surface-high/60 text-on-surface-variant',
+  DERIVED: 'border-outline-variant bg-transparent text-outline',
+  PENDING_MODEL: 'border-tertiary/35 bg-tertiary/10 text-tertiary',
 };
 
 export function ProvenanceTag({ provenance, className }: ProvenanceTagProps) {
@@ -23,7 +23,7 @@ export function ProvenanceTag({ provenance, className }: ProvenanceTagProps) {
 
   return (
     <span
-      className={`inline-flex shrink-0 items-center border px-1 text-[9px] font-bold uppercase leading-[14px] tracking-[0.06em] ${TONE[provenance]}${
+      className={`inline-flex shrink-0 items-center rounded-[4px] border px-1 text-[9px] font-semibold uppercase leading-[14px] tracking-[0.08em] ${TONE[provenance]}${
         className ? ` ${className}` : ''
       }`}
       title={definition.description}

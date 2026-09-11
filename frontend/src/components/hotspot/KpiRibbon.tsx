@@ -27,7 +27,7 @@ export function KpiRibbon({ summary, totalInDataset, isFiltered }: KpiRibbonProp
 
   return (
     <div
-      className="flex shrink-0 divide-x divide-outline-variant overflow-x-auto border-b border-outline-variant bg-surface"
+      className="flex shrink-0 divide-x divide-outline-variant overflow-x-auto border-b border-outline-variant bg-surface-low/40"
       role="group"
       aria-label="Key indicators for the current filter"
     >
@@ -112,18 +112,22 @@ function Cell({
 }) {
   const body = (
     <>
-      <span className="flex items-center gap-1 truncate text-label uppercase text-on-surface-variant">
+      <span className="flex items-center gap-1 truncate text-label uppercase text-outline">
         {icon ? <Icon name={icon} size={11} /> : null}
         {label}
       </span>
-      <span className="font-mono text-data-lg" style={color ? { color } : undefined}>
-        {value}
+      <span
+        className="font-mono text-display tabular-nums"
+        style={color ? { color } : undefined}
+      >
+        {value.toLocaleString('en-IN')}
       </span>
-      <span className="truncate text-[10px] leading-[12px] text-outline">{hint}</span>
+      <span className="truncate text-[11px] leading-[14px] text-on-surface-variant/80">{hint}</span>
     </>
   );
 
-  const base = 'flex min-w-[124px] flex-1 flex-col justify-center gap-0.5 px-3 py-1.5 text-left';
+  const base =
+    'relative flex min-w-[136px] flex-1 flex-col justify-center gap-1 px-4 py-2.5 text-left';
 
   if (!onClick) {
     return (
@@ -136,7 +140,11 @@ function Cell({
   return (
     <button
       aria-pressed={active}
-      className={`${base} transition-colors hover:bg-surface-high ${active ? 'bg-surface-high' : ''}`}
+      className={`${base} rounded-none hover:bg-surface-high/70 ${
+        active
+          ? 'bg-surface-high/70 after:absolute after:inset-x-4 after:bottom-0 after:h-0.5 after:rounded-full after:bg-accent after:content-[""]'
+          : ''
+      }`}
       onClick={onClick}
       title={`${hint} — click to filter`}
       type="button"

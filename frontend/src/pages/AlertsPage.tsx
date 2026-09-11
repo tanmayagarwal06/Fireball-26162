@@ -408,7 +408,6 @@ function AlertRow({
   onOpen: () => void;
 }) {
   const severityColor = `var(${entry.severity.colorVar})`;
-  const isCritical = entry.severity.key === 'CRITICAL';
 
   return (
     <tr
@@ -431,7 +430,7 @@ function AlertRow({
             event.stopPropagation();
             onOpen();
           }}
-          style={{ color: isCritical ? severityColor : 'var(--color-primary)' }}
+          style={{ color: 'var(--color-on-surface)' }}
           type="button"
         >
           {entry.alert.hotspot_id}
