@@ -1,9 +1,9 @@
-/**
+﻿/**
  * The primary map surface.
  *
  * Real Leaflet, real tiles, real pan and zoom. The map is the dominant element of
  * the dashboard per DESIGN.md, so this component owns nothing but the map and its
- * overlays — filters and detail panels live outside it.
+ * overlays â€” filters and detail panels live outside it.
  *
  * Marker clustering is deliberately absent. The dataset is 11 records; a cluster
  * plugin would add a dependency and hide individual points for no benefit. If the
@@ -24,6 +24,7 @@ import {
   type Basemap,
 } from './basemaps';
 import { createHotspotIcon } from './markerIcon';
+import { HeatLayer, HEAT_WEIGHTS, type HeatWeightMode } from './HeatLayer';
 import { MapLegend } from './MapLegend';
 import { getClassification } from '../../domain/classification';
 import { resolveRiskLevel } from '../../domain/risk';
@@ -34,6 +35,15 @@ import type { Hotspot } from '../../types/hotspot';
 
 /** What drives marker colour. Both are legitimate operator views. */
 export type MarkerColorMode = 'classification' | 'risk';
+
+/** Which rendering of the detections is shown. */
+export type MapViewMode = 'markers' | 'heatmap' | 'both';
+
+export const VIEW_MODES: Array<{ key: MapViewMode; label: string; icon: string; description: string }> = [
+  { key: 'markers', label: 'Points', icon: 'scatter_plot', description: 'One marker per detection' },
+  { key: 'heatmap', label: 'Heat', icon: 'blur_on', description: 'Density surface weighted by intensity' },
+  { key: 'both', label: 'Both', icon: 'layers', description: 'Heat surface beneath the markers' },
+];
 
 export interface MapViewProps {
   hotspots: Hotspot[];
@@ -73,8 +83,18 @@ export function MapView({
 }: MapViewProps) {
   const [basemap, setBasemap] = useState<Basemap>(DEFAULT_BASEMAP);
   const [colorMode, setColorMode] = useState<MarkerColorMode>('classification');
+  const [viewMode, setViewMode] = useState<MapViewMode>('markers');
+  const [heatWeight, setHeatWeight] = useState<HeatWeightMode>('frp');
   const [layerPickerOpen, setLayerPickerOpen] = useState(false);
   const mapRef = useRef<LeafletMap | null>(null);
+
+  const showHeat = interactive && viewMode !== 'markers';
+  const showMarkers = viewMode !== 'heatmap';
+  // In heat-only mode the selected detection stays visible so the selection is never lost.
+  const markerHotspots = useMemo(
+    () => (showMarkers ? hotspots : hotspots.filter((hotspot) => hotspot.id === selectedId)),
+    [hotspots, selectedId, showMarkers],
+  );
 
   const bounds = useMemo(() => computeBounds(hotspots), [hotspots]);
 
@@ -97,7 +117,7 @@ export function MapView({
         attributionControl
         boxZoom={interactive}
         center={FALLBACK_CENTER}
-        className="absolute inset-0 size-full"
+        className="map-frame absolute inset-0 size-full"
         doubleClickZoom={interactive}
         dragging={interactive}
         keyboard={interactive}
@@ -118,7 +138,11 @@ export function MapView({
 
         <ViewController bounds={bounds} focusId={focusId} hotspots={hotspots} />
 
-        {hotspots.map((hotspot) => (
+        {showHeat ? (
+          <HeatLayer hotspots={hotspots} subdued={viewMode === 'both'} weightMode={heatWeight} />
+        ) : null}
+
+        {markerHotspots.map((hotspot) => (
           <HotspotMarker
             colorMode={colorMode}
             hotspot={hotspot}
@@ -135,6 +159,7 @@ export function MapView({
         <>
           <MapToolbar
             colorMode={colorMode}
+            heatWeight={heatWeight}
             isRefreshing={isRefreshing}
             lastLoadedAt={lastLoadedAt}
             layerPickerOpen={layerPickerOpen}
@@ -142,19 +167,28 @@ export function MapView({
             onRefresh={onRefresh}
             onSetBasemap={setBasemap}
             onSetColorMode={setColorMode}
+            onSetHeatWeight={setHeatWeight}
+            onSetViewMode={setViewMode}
             onToggleLayerPicker={() => setLayerPickerOpen((open) => !open)}
             activeBasemapId={basemap.id}
             canFit={bounds !== null}
             mapRef={mapRef}
+            viewMode={viewMode}
           />
 
-          {showLegend ? <MapLegend colorMode={colorMode} /> : null}
+          {showLegend ? (
+            <MapLegend
+              colorMode={colorMode}
+              heatWeight={heatWeight}
+              viewMode={viewMode}
+            />
+          ) : null}
         </>
       ) : null}
 
       {hotspots.length === 0 ? (
         <div className="pointer-events-none absolute inset-0 z-[500] flex items-center justify-center">
-          <p className="border border-outline-variant bg-surface-lowest/90 px-3 py-2 text-label uppercase text-on-surface-variant">
+          <p className="glass rounded-[var(--radius-md)] px-4 py-2.5 text-label uppercase text-on-surface-variant">
             No hotspots match the current filters
           </p>
         </div>
@@ -179,7 +213,7 @@ function computeBounds(hotspots: Hotspot[]): LatLngBounds | null {
  * Drives the viewport imperatively.
  *
  * Fits the data once on first load, then leaves the operator's pan and zoom
- * alone — a map that re-centres itself every time a filter changes is hostile.
+ * alone â€” a map that re-centres itself every time a filter changes is hostile.
  * The exception is `focusId`, used by the investigation screen to open on a
  * specific hotspot.
  */
@@ -265,7 +299,7 @@ function HotspotMarker({
             {classification.label}
           </span>
           <span className="font-mono text-body-sm text-on-surface-variant">
-            Risk {hotspot.risk_score} · {formatFrp(hotspot.frp)}
+            Risk {hotspot.risk_score} Â· {formatFrp(hotspot.frp)}
           </span>
           <span className="font-mono text-body-sm text-on-surface-variant">
             {formatCoordinates(hotspot.lat, hotspot.lon, 3)}
@@ -294,6 +328,10 @@ function MapToolbar({
   onRefresh,
   isRefreshing,
   lastLoadedAt,
+  viewMode,
+  onSetViewMode,
+  heatWeight,
+  onSetHeatWeight,
 }: {
   onFit: () => void;
   canFit: boolean;
@@ -307,13 +345,46 @@ function MapToolbar({
   onRefresh?: () => void;
   isRefreshing: boolean;
   lastLoadedAt: Date | null;
+  viewMode: MapViewMode;
+  onSetViewMode: (mode: MapViewMode) => void;
+  heatWeight: HeatWeightMode;
+  onSetHeatWeight: (mode: HeatWeightMode) => void;
 }) {
   const buttonClass =
-    'flex size-8 items-center justify-center text-on-surface transition-colors hover:bg-surface-high disabled:opacity-40 disabled:hover:bg-transparent';
+    'flex size-9 items-center justify-center rounded-none text-on-surface-variant hover:bg-surface-high hover:text-on-surface disabled:opacity-40 disabled:hover:bg-transparent';
 
   return (
     <div className="absolute right-3 top-3 z-[500] flex flex-col items-end gap-2">
-      <div className="flex flex-col border border-outline-variant bg-surface-lowest/95 divide-y divide-outline-variant">
+      {/* Points / Heat / Both segmented control. */}
+      <div
+        aria-label="Detection rendering"
+        className="glass flex overflow-hidden rounded-[var(--radius-md)] p-0.5"
+        role="radiogroup"
+      >
+        {VIEW_MODES.map((mode) => {
+          const active = viewMode === mode.key;
+          return (
+            <button
+              aria-checked={active}
+              className={`flex h-7 items-center gap-1.5 rounded-[var(--radius-sm)] px-2.5 text-body-sm ${
+                active
+                  ? 'bg-surface-highest text-on-surface shadow-[inset_0_1px_0_rgb(255_255_255_/_0.06)]'
+                  : 'text-on-surface-variant hover:bg-surface-high hover:text-on-surface'
+              }`}
+              key={mode.key}
+              onClick={() => onSetViewMode(mode.key)}
+              role="radio"
+              title={mode.description}
+              type="button"
+            >
+              <Icon className={active ? 'text-accent' : 'text-outline'} name={mode.icon} size={14} />
+              {mode.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="glass flex flex-col divide-y divide-outline-variant overflow-hidden rounded-[var(--radius-md)]">
         <button
           aria-label="Zoom in"
           className={buttonClass}
@@ -350,7 +421,7 @@ function MapToolbar({
             onClick={onRefresh}
             title={
               lastLoadedAt
-                ? `Reload hotspots — last loaded ${lastLoadedAt.toLocaleTimeString('en-GB', { hour12: false })}`
+                ? `Reload hotspots â€” last loaded ${lastLoadedAt.toLocaleTimeString('en-GB', { hour12: false })}`
                 : 'Reload hotspots from the backend'
             }
             type="button"
@@ -362,7 +433,7 @@ function MapToolbar({
         <button
           aria-expanded={layerPickerOpen}
           aria-label="Map layers and marker colouring"
-          className={`${buttonClass}${layerPickerOpen ? ' bg-surface-high text-primary' : ''}`}
+          className={`${buttonClass}${layerPickerOpen ? ' bg-surface-high text-on-surface' : ''}`}
           onClick={onToggleLayerPicker}
           type="button"
         >
@@ -371,17 +442,17 @@ function MapToolbar({
       </div>
 
       {/*
-        Load timestamp. States plainly that data is fetched on demand — there is
+        Load timestamp. States plainly that data is fetched on demand â€” there is
         no streaming feed behind this, so no "live" indicator is shown.
       */}
       {onRefresh ? (
         <div
-          className="border border-outline-variant bg-surface-lowest/95 px-2 py-0.5"
+          className="glass rounded-[var(--radius-sm)] px-2 py-0.5"
           title="Hotspot data is fetched on request from a file-backed pipeline export (data/hotspots.json). No live ingestion."
         >
           <span className="font-mono text-[10px] text-outline">
             {isRefreshing
-              ? 'Loading…'
+              ? 'Loadingâ€¦'
               : lastLoadedAt
                 ? `Loaded ${lastLoadedAt.toLocaleTimeString('en-GB', { hour12: false })}`
                 : 'Not loaded'}
@@ -390,7 +461,7 @@ function MapToolbar({
       ) : null}
 
       {layerPickerOpen ? (
-        <div className="w-56 border border-outline-variant bg-surface-lowest/95 p-compact">
+        <div className="glass w-56 rounded-[var(--radius-md)] p-gutter">
           <fieldset className="mb-3">
             <legend className="mb-1.5 text-label uppercase text-on-surface-variant">Basemap</legend>
             <div className="flex flex-col gap-1">
@@ -402,7 +473,7 @@ function MapToolbar({
                 >
                   <input
                     checked={activeBasemapId === option.id}
-                    className="size-3 accent-[var(--color-primary)]"
+                    className="size-3"
                     name="basemap"
                     onChange={() => onSetBasemap(option)}
                     type="radio"
@@ -421,7 +492,7 @@ function MapToolbar({
               <label className="flex cursor-pointer items-center gap-2 text-body-sm text-on-surface">
                 <input
                   checked={colorMode === 'classification'}
-                  className="size-3 accent-[var(--color-primary)]"
+                  className="size-3"
                   name="colorMode"
                   onChange={() => onSetColorMode('classification')}
                   type="radio"
@@ -431,7 +502,7 @@ function MapToolbar({
               <label className="flex cursor-pointer items-center gap-2 text-body-sm text-on-surface">
                 <input
                   checked={colorMode === 'risk'}
-                  className="size-3 accent-[var(--color-primary)]"
+                  className="size-3"
                   name="colorMode"
                   onChange={() => onSetColorMode('risk')}
                   type="radio"
@@ -440,6 +511,32 @@ function MapToolbar({
               </label>
             </div>
           </fieldset>
+
+          {viewMode !== 'markers' ? (
+            <fieldset className="mt-3">
+              <legend className="mb-1.5 text-label uppercase text-on-surface-variant">
+                Weight heat by
+              </legend>
+              <div className="flex flex-col gap-1">
+                {(Object.keys(HEAT_WEIGHTS) as HeatWeightMode[]).map((mode) => (
+                  <label
+                    className="flex cursor-pointer items-center gap-2 text-body-sm text-on-surface"
+                    key={mode}
+                    title={HEAT_WEIGHTS[mode].description}
+                  >
+                    <input
+                      checked={heatWeight === mode}
+                      className="size-3"
+                      name="heatWeight"
+                      onChange={() => onSetHeatWeight(mode)}
+                      type="radio"
+                    />
+                    {HEAT_WEIGHTS[mode].label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          ) : null}
         </div>
       ) : null}
     </div>
